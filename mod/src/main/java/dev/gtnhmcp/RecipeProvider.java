@@ -6,7 +6,6 @@ import net.minecraft.item.ItemStack;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 
 import codechicken.nei.ItemList;
 import codechicken.nei.SearchField;
@@ -21,8 +20,8 @@ public final class RecipeProvider implements QueryProvider {
 
     public JsonObject query(String method, JsonObject params) {
         if ("item_lookup".equals(method)) return itemLookup(params);
-        if ("recipe_lookup".equals(method)) return lookup(params);
-        if ("recipes.graph".equals(method)) return graph(params);
+        if ("lookup_recipes".equals(method)) return lookup(params, true);
+        if ("lookup_uses".equals(method)) return lookup(params, false);
         if ("recipe_get".equals(method)) return recipeGet(params);
         throw new IllegalArgumentException("unknown recipe method: " + method);
     }
@@ -53,11 +52,8 @@ public final class RecipeProvider implements QueryProvider {
         return d;
     }
 
-    private JsonObject lookup(JsonObject p) {
-        if (!p.has("resource") || !p.has("direction")) return BridgeResponses.error("resource and direction required");
-        String dir = p.get("direction")
-            .getAsString();
-        if (!"produces".equals(dir) && !"consumes".equals(dir)) return BridgeResponses.error("invalid direction");
+    private JsonObject lookup(JsonObject p, boolean recipes) {
+        if (!p.has("resource")) return BridgeResponses.error("resource required");
         java.util.List<ItemStack> focus = resolve(p.getAsJsonObject("resource"));
         if (focus.isEmpty()) return BridgeResponses.error("resource not found");
         int offset = integer(p, "offset", 0, 0, 100000), limit = integer(p, "limit", 50, 1, 200), skip = 0;
@@ -65,11 +61,11 @@ public final class RecipeProvider implements QueryProvider {
         JsonArray a = new JsonArray();
         boolean more = false;
         for (ItemStack s : focus) {
-            java.util.List<? extends IRecipeHandler> hs = "produces".equals(dir)
+            java.util.List<? extends IRecipeHandler> hs = recipes
                 ? GuiCraftingRecipe.getCraftingHandlers("item", s.copy())
                 : GuiUsageRecipe.getUsageHandlers("item", s.copy());
             for (IRecipeHandler h : hs) for (int i = 0; i < h.numRecipes(); i++) {
-                JsonObject r = normalize(h, i, Recipe.of(h, i), false);
+                JsonObject r = normalize(h, i, Recipe.of(h, i));
                 if (r == null || !ids.add(
                     r.get("id")
                         .toString()))
@@ -90,70 +86,7 @@ public final class RecipeProvider implements QueryProvider {
         return d;
     }
 
-    private JsonObject graph(JsonObject p) {
-        if (!p.has("ends") || !p.get("ends")
-            .isJsonArray()) return BridgeResponses.error("ends required");
-        int max = integer(p, "max_recipes", 200, 1, 500), depth = integer(p, "max_depth", 4, 1, 16),
-            maxResources = integer(p, "max_resources", 300, 1, 1000);
-        long deadline = System.nanoTime() + 500000000L;
-        java.util.HashSet<String> stops = new java.util.HashSet<String>();
-        if (p.has("starts") && p.get("starts")
-            .isJsonArray())
-            for (com.google.gson.JsonElement e : p.getAsJsonArray("starts"))
-                for (ItemStack st : resolveText(e.getAsString())) stops.add(ResourceNormalizer.resourceID(st));
-        java.util.ArrayList<ItemStack> q = new java.util.ArrayList<ItemStack>();
-        for (com.google.gson.JsonElement e : p.getAsJsonArray("ends")) {
-            q.addAll(resolveText(e.getAsString()));
-        }
-        JsonArray out = new JsonArray();
-        java.util.HashSet<String> seen = new java.util.HashSet<String>(), resources = new java.util.HashSet<String>();
-        java.util.ArrayList<String> reasons = new java.util.ArrayList<String>();
-        for (int d = 0; d < depth && !q.isEmpty() && out.size() < max; d++) {
-            java.util.ArrayList<ItemStack> next = new java.util.ArrayList<ItemStack>();
-            for (ItemStack s : q) {
-                if (System.nanoTime() > deadline) {
-                    reasons.add("deadline");
-                    break;
-                }
-                if (!resources.add(ResourceNormalizer.resourceID(s))) continue;
-                if (resources.size() > maxResources) {
-                    reasons.add("max_resources");
-                    break;
-                }
-                for (IRecipeHandler h : GuiCraftingRecipe.getCraftingHandlers("item", s.copy()))
-                    for (int i = 0; i < h.numRecipes() && out.size() < max; i++) {
-                        Recipe raw = Recipe.of(h, i);
-                        JsonObject r = normalize(h, i, raw, true);
-                        if (r == null || !seen.add(
-                            r.get("id")
-                                .toString()))
-                            continue;
-                        out.add(r);
-                        for (Recipe.RecipeIngredient ingredient : raw.getIngredients()) {
-                            if (ingredient.getAmount() <= 0) continue;
-                            java.util.List<ItemStack> permutations = ingredient.getPermutations();
-                            if (!permutations.isEmpty()
-                                && !stops.contains(ResourceNormalizer.resourceID(permutations.get(0))))
-                                next.add(
-                                    permutations.get(0)
-                                        .copy());
-                        }
-                    }
-            }
-            q = next;
-        }
-        if (out.size() >= max) reasons.add("max_recipes");
-        else if (!q.isEmpty() && reasons.isEmpty()) reasons.add("max_depth");
-        JsonObject data = new JsonObject();
-        data.add("recipes", out);
-        data.addProperty("truncated", !reasons.isEmpty());
-        JsonArray rs = new JsonArray();
-        for (String reason : reasons) rs.add(new JsonPrimitive(reason));
-        data.add("truncation_reasons", rs);
-        return data;
-    }
-
-    private java.util.List<ItemStack> resolve(JsonObject s) {
+    java.util.List<ItemStack> resolve(JsonObject s) {
         java.util.ArrayList<ItemStack> out = new java.util.ArrayList<ItemStack>();
         if (!ItemList.loadFinished || ItemList.items == null) return out;
         String id = s.has("id") ? s.get("id")
@@ -170,7 +103,7 @@ public final class RecipeProvider implements QueryProvider {
         return out;
     }
 
-    private java.util.List<ItemStack> resolveText(String text) {
+    java.util.List<ItemStack> resolveText(String text) {
         JsonObject s = new JsonObject();
         s.addProperty("id", text);
         java.util.List<ItemStack> r = resolve(s);
@@ -190,7 +123,7 @@ public final class RecipeProvider implements QueryProvider {
         try {
             codechicken.nei.recipe.Recipe nativeRecipe = codechicken.nei.recipe.Recipe
                 .of(codechicken.nei.recipe.Recipe.RecipeId.of(p.getAsJsonObject("id")));
-            if (nativeRecipe != null) r = normalize(null, -1, nativeRecipe, false);
+            if (nativeRecipe != null) r = normalize(null, -1, nativeRecipe);
         } catch (Exception ignored) {}
         d.addProperty("found", r != null);
         if (r != null) d.add("recipe", r);
@@ -198,7 +131,7 @@ public final class RecipeProvider implements QueryProvider {
         return d;
     }
 
-    private JsonObject normalize(IRecipeHandler handler, int index, Recipe r, boolean includeResourceIDs) {
+    private JsonObject normalize(IRecipeHandler handler, int index, Recipe r) {
         if (r == null || r.getRecipeId() == null) return null;
         JsonObject o = new JsonObject();
         o.add(
@@ -210,8 +143,8 @@ public final class RecipeProvider implements QueryProvider {
             r.getRecipeId()
                 .getHandleName());
         o.addProperty("handler_name", r.getHandlerName());
-        o.add("inputs", groups(r.getIngredients(), true, includeResourceIDs));
-        o.add("outputs", groups(r.getResults(), false, includeResourceIDs));
+        o.add("inputs", groups(r.getIngredients(), true));
+        o.add("outputs", groups(r.getResults(), false));
         if (handler instanceof gregtech.nei.GTNEIDefaultHandler) {
             gregtech.nei.GTNEIDefaultHandler gt = (gregtech.nei.GTNEIDefaultHandler) handler;
             if (gt.getRecipeMap() != null) o.addProperty(
@@ -222,14 +155,13 @@ public final class RecipeProvider implements QueryProvider {
         return o;
     }
 
-    private JsonArray groups(java.util.List<Recipe.RecipeIngredient> in, boolean consumed, boolean includeResourceIDs) {
+    JsonArray groups(java.util.List<Recipe.RecipeIngredient> in, boolean consumed) {
         JsonArray a = new JsonArray();
         for (Recipe.RecipeIngredient g : in) {
             JsonObject x = new JsonObject();
             JsonArray alts = new JsonArray();
-            for (ItemStack s : g.getPermutations()) alts.add(
-                includeResourceIDs ? ResourceNormalizer.planningResource(s, g.getAmount(), player(), 2)
-                    : ResourceNormalizer.resource(s, g.getAmount(), player(), 2));
+            for (ItemStack s : g.getPermutations())
+                alts.add(ResourceNormalizer.resource(s, g.getAmount(), player(), 2));
             x.add("alternatives", alts);
             x.addProperty("consumed", consumed && g.getAmount() > 0);
             x.addProperty("catalyst", consumed && g.getAmount() <= 0);

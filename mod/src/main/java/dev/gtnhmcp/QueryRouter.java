@@ -18,9 +18,10 @@ public final class QueryRouter {
         this.dispatcher = dispatcher;
         RecipeProvider recipes = new RecipeProvider();
         register("item_lookup", recipes);
-        register("recipe_lookup", recipes);
-        register("recipes.graph", recipes);
+        register("lookup_recipes", recipes);
+        register("lookup_uses", recipes);
         register("recipe_get", recipes);
+        register("recipe_paths", new RecipePathProvider(recipes));
         if (Loader.isModLoaded("betterquesting")) register("quests_query", new QuestProvider());
         StatusProvider status = new StatusProvider(providers.keySet());
         register("status", status);

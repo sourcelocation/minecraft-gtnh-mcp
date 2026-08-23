@@ -28,6 +28,9 @@ func (e *Error) Error() string {
 	if e.StatusCode == 0 {
 		return "Minecraft bridge unavailable: " + e.Message
 	}
+	if e.StatusCode == http.StatusOK {
+		return "Minecraft bridge error: " + e.Message
+	}
 	return fmt.Sprintf("Minecraft bridge returned HTTP %d: %s", e.StatusCode, e.Message)
 }
 
@@ -37,17 +40,8 @@ func newAt(url string) *Client {
 	return &Client{url: url, http: &http.Client{Timeout: 15 * time.Second}}
 }
 
-func (c *Client) Call(ctx context.Context, method string, args interface{}, out interface{}) error {
-	body, err := c.CallRaw(ctx, method, args)
-	if err != nil {
-		return err
-	}
-	return json.Unmarshal(body, out)
-}
-
 // CallRaw returns the bridge's JSON response without imposing a Go response
-// model. Most MCP tools forward this payload verbatim; callers that compute a
-// derived result can decode it with Call instead.
+// model. MCP tools forward this payload verbatim.
 func (c *Client) CallRaw(ctx context.Context, method string, args interface{}) ([]byte, error) {
 	if len(method) > 80 || !validMethod(method) {
 		return nil, errors.New("invalid bridge method")
@@ -73,17 +67,15 @@ func (c *Client) CallRaw(ctx context.Context, method string, args interface{}) (
 	if len(body) > maxBody {
 		return nil, errors.New("bridge response too large")
 	}
-	if resp.StatusCode != 200 {
-		var payload struct {
-			Error string `json:"error"`
-		}
-		if json.Unmarshal(body, &payload) != nil || payload.Error == "" {
+	var payload struct {
+		Error string `json:"error"`
+	}
+	_ = json.Unmarshal(body, &payload)
+	if resp.StatusCode != http.StatusOK || payload.Error != "" {
+		if payload.Error == "" {
 			payload.Error = string(body)
 		}
 		return nil, &Error{StatusCode: resp.StatusCode, Message: payload.Error}
-	}
-	if !json.Valid(body) {
-		return nil, errors.New("bridge returned invalid JSON")
 	}
 	return body, nil
 }

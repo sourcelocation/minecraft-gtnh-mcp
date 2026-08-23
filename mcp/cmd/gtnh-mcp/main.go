@@ -7,7 +7,6 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/sourcelocation/gtnh-mcp/mcp/internal/bridge"
 	"github.com/sourcelocation/gtnh-mcp/mcp/internal/model"
-	"github.com/sourcelocation/gtnh-mcp/mcp/internal/planner"
 )
 
 func main() {
@@ -19,7 +18,6 @@ func main() {
 }
 
 type bridgeClient interface {
-	Call(context.Context, string, interface{}, interface{}) error
 	CallRaw(context.Context, string, interface{}) ([]byte, error)
 }
 
@@ -30,11 +28,11 @@ func newServer(client bridgeClient) *mcp.Server {
 	addBridgeTool(server, client, "player", "Current player position and compact inventory summaries", "player", model.PlayerRequest{})
 	addBridgeTool(server, client, "player_slot", "Inspect the exact live item stack in a player inventory slot", "player_slot", model.PlayerSlotRequest{})
 	addBridgeTool(server, client, "item_lookup", "Find generic item IDs in the loaded NEI catalog", "item_lookup", model.ItemLookupRequest{})
-	addBridgeTool(server, client, "recipe_lookup", "Find recipes that produce or consume a resource", "recipe_lookup", model.RecipeLookupRequest{})
+	addBridgeTool(server, client, "lookup_recipes", "Find recipes that produce a resource", "lookup_recipes", model.RecipeLookupRequest{})
+	addBridgeTool(server, client, "lookup_uses", "Find recipes that consume a resource", "lookup_uses", model.RecipeLookupRequest{})
 	addBridgeTool(server, client, "recipe_get", "Resolve an opaque NEI recipe identifier", "recipe_get", model.RecipeGetRequest{})
+	addBridgeTool(server, client, "recipe_paths", "Build an on-demand recipe chain using live NEI data", "recipe_paths", model.RecipePathsRequest{})
 	addBridgeTool(server, client, "quests_query", "Query BetterQuesting progress when available", "quests_query", model.QuestQueryRequest{})
-
-	mcp.AddTool(server, &mcp.Tool{Name: "recipe_paths", Description: "Build a bounded recipe chain and list the machines it requires"}, recipePaths(client))
 
 	return server
 }
@@ -47,17 +45,6 @@ func addBridgeTool[In any](server *mcp.Server, client bridgeClient, name, descri
 		}
 		return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(output)}}}, nil, nil
 	})
-}
-
-func recipePaths(client bridgeClient) func(context.Context, *mcp.CallToolRequest, planner.Request) (*mcp.CallToolResult, planner.Plan, error) {
-	return func(ctx context.Context, _ *mcp.CallToolRequest, request planner.Request) (*mcp.CallToolResult, planner.Plan, error) {
-		var graph model.RecipeData
-		params := model.GraphRequest{Starts: request.Starts, Ends: request.Ends, MaxDepth: request.MaxSteps, MaxRecipes: 300}
-		if err := client.Call(ctx, "recipes.graph", params, &graph); err != nil {
-			return toolError(err), planner.Plan{}, nil
-		}
-		return nil, planner.Solve(graph.Recipes, request), nil
-	}
 }
 
 func toolError(err error) *mcp.CallToolResult {

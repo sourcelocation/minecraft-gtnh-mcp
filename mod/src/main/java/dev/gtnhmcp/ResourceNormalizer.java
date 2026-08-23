@@ -25,14 +25,6 @@ public final class ResourceNormalizer {
         return fluid == null ? item(stack, amount, player, tooltipLines) : fluid(fluid, amount);
     }
 
-    public static JsonObject planningResource(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
-        FluidStack fluid = StackInfo.getFluid(stack);
-        JsonObject result = resource(stack, amount, player, tooltipLines);
-        result.addProperty("kind", fluid == null ? "item" : "fluid");
-        result.addProperty("amount", amount);
-        return result;
-    }
-
     public static JsonObject exactItem(ItemStack stack, EntityPlayer player) {
         JsonObject result = new JsonObject();
         result.addProperty("id", itemID(stack));

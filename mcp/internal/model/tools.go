@@ -8,33 +8,22 @@ type ItemLookupRequest struct {
 	Limit  int    `json:"limit,omitempty"`
 }
 type RecipeLookupRequest struct {
-	Direction string           `json:"direction"`
-	Resource  ResourceSelector `json:"resource"`
-	Offset    int              `json:"offset,omitempty"`
-	Limit     int              `json:"limit,omitempty"`
+	Resource ResourceSelector `json:"resource"`
+	Offset   int              `json:"offset,omitempty"`
+	Limit    int              `json:"limit,omitempty"`
 }
 type ResourceSelector struct {
 	ID    string `json:"id,omitempty"`
 	Query string `json:"query,omitempty"`
 }
-type ExactResourceSelector struct {
-	ID string `json:"id,omitempty"`
-}
-type RecipeData struct {
-	Recipes           []Recipe `json:"recipes"`
-	NextOffset        int      `json:"next_offset,omitempty"`
-	Truncated         bool     `json:"truncated,omitempty"`
-	TruncationReasons []string `json:"truncation_reasons,omitempty"`
-}
 type RecipeGetRequest struct {
 	ID json.RawMessage `json:"id"`
 }
-type GraphRequest struct {
-	Starts       []string `json:"starts,omitempty"`
-	Ends         []string `json:"ends"`
-	MaxDepth     int      `json:"max_depth,omitempty"`
-	MaxRecipes   int      `json:"max_recipes,omitempty"`
-	MaxResources int      `json:"max_resources,omitempty"`
+type RecipePathsRequest struct {
+	Starts            []string `json:"starts,omitempty"`
+	Ends              []string `json:"ends"`
+	ExcludesResources []string `json:"excludes_resources,omitempty"`
+	MaxSteps          int      `json:"max_steps,omitempty"`
 }
 type QuestQueryRequest struct {
 	ID        string   `json:"id,omitempty"`
