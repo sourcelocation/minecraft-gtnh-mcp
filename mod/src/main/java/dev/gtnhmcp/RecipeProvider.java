@@ -42,7 +42,7 @@ public final class RecipeProvider implements QueryProvider {
                 more = true;
                 break;
             }
-            rows.add(ResourceNormalizer.identifiedResource(s, s.stackSize, player(), 2));
+            rows.add(ResourceNormalizer.resource(s, s.stackSize, player(), 2));
         }
         JsonObject d = new JsonObject();
         d.add("items", rows);
@@ -228,7 +228,7 @@ public final class RecipeProvider implements QueryProvider {
             JsonObject x = new JsonObject();
             JsonArray alts = new JsonArray();
             for (ItemStack s : g.getPermutations()) alts.add(
-                includeResourceIDs ? ResourceNormalizer.identifiedResource(s, g.getAmount(), player(), 2)
+                includeResourceIDs ? ResourceNormalizer.planningResource(s, g.getAmount(), player(), 2)
                     : ResourceNormalizer.resource(s, g.getAmount(), player(), 2));
             x.add("alternatives", alts);
             x.addProperty("consumed", consumed && g.getAmount() > 0);

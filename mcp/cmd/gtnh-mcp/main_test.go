@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -50,6 +51,15 @@ func TestServerPublishesExpectedTools(t *testing.T) {
 		}
 		if tool.Name == "recipe_paths" && tool.OutputSchema == nil {
 			t.Fatal("recipe_paths is missing its output schema")
+		}
+		if tool.Name == "recipe_paths" {
+			schema, err := json.Marshal(tool.OutputSchema)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(string(schema), `"amount"`) {
+				t.Fatalf("recipe_paths exposes redundant numeric item amounts: %s", schema)
+			}
 		}
 		if tool.Name != "recipe_paths" && tool.OutputSchema != nil {
 			t.Fatalf("forwarded tool %q unexpectedly has an output schema", tool.Name)

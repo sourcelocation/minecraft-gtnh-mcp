@@ -56,11 +56,15 @@ final class StatusProvider implements QueryProvider {
         data.addProperty("yaw", player.rotationYaw);
         data.addProperty("pitch", player.rotationPitch);
         int tooltipLines = integer(params, "tooltip_max_lines", 2, 0, 10);
-        JsonArray inventory = new JsonArray();
+        JsonObject inventory = new JsonObject();
+        JsonArray main = new JsonArray();
         for (int i = 0; i < player.inventory.mainInventory.length; i++)
-            addStack(inventory, i, "main", player.inventory.mainInventory[i], player, tooltipLines);
+            addStack(main, i, player.inventory.mainInventory[i], player, tooltipLines);
+        JsonArray armor = new JsonArray();
         for (int i = 0; i < player.inventory.armorInventory.length; i++)
-            addStack(inventory, i, "armor", player.inventory.armorInventory[i], player, tooltipLines);
+            addStack(armor, i, player.inventory.armorInventory[i], player, tooltipLines);
+        inventory.add("main", main);
+        inventory.add("armor", armor);
         data.add("inventory", inventory);
         return data;
     }
@@ -90,13 +94,13 @@ final class StatusProvider implements QueryProvider {
         return result;
     }
 
-    private void addStack(JsonArray inventory, int slot, String scope, ItemStack stack, EntityPlayer player,
-        int tooltipLines) {
+    private void addStack(JsonArray inventory, int slot, ItemStack stack, EntityPlayer player, int tooltipLines) {
         if (stack == null) return;
         JsonObject entry = new JsonObject();
         entry.addProperty("slot", slot);
-        entry.addProperty("scope", scope);
-        entry.add("item", ResourceNormalizer.resource(stack, stack.stackSize, player, tooltipLines));
+        JsonObject formatted = ResourceNormalizer.resource(stack, stack.stackSize, player, tooltipLines);
+        entry.add("id", formatted.get("id"));
+        entry.add("item", formatted.get("item"));
         inventory.add(entry);
     }
 

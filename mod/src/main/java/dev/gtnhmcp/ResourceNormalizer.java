@@ -22,28 +22,34 @@ public final class ResourceNormalizer {
 
     public static JsonObject resource(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
         FluidStack fluid = StackInfo.getFluid(stack);
-        return fluid == null ? item(stack, amount, player, tooltipLines, false) : fluid(fluid, amount, false);
+        return fluid == null ? item(stack, amount, player, tooltipLines) : fluid(fluid, amount);
     }
 
-    public static JsonObject identifiedResource(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
+    public static JsonObject planningResource(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
         FluidStack fluid = StackInfo.getFluid(stack);
-        return fluid == null ? item(stack, amount, player, tooltipLines, true) : fluid(fluid, amount, true);
+        JsonObject result = resource(stack, amount, player, tooltipLines);
+        result.addProperty("kind", fluid == null ? "item" : "fluid");
+        result.addProperty("amount", amount);
+        return result;
     }
 
     public static JsonObject exactItem(ItemStack stack, EntityPlayer player) {
-        JsonObject result = item(stack, stack.stackSize, player, 2, false);
-        result.addProperty("item_id", itemID(stack));
-        result.addProperty("registry", registry(stack));
-        result.addProperty("meta", stack.getItemDamage());
-        result.add("tooltip", tooltip(stack, player, Integer.MAX_VALUE, false, true));
-        result.add("ore_names", oreNames(stack));
+        JsonObject result = new JsonObject();
+        result.addProperty("id", itemID(stack));
+        result.addProperty("item", formattedItem(stack, stack.stackSize, player, Integer.MAX_VALUE, true));
+        if (stack.hasTagCompound()) result.addProperty(
+            "nbt",
+            stack.getTagCompound()
+                .toString());
+        JsonArray ores = oreNames(stack);
+        if (ores.size() > 0) result.add("ore_names", ores);
         return result;
     }
 
     public static String itemID(ItemStack stack) {
         int meta = stack.getItem()
             .getHasSubtypes() ? stack.getItemDamage() : 0;
-        return registry(stack) + ":" + meta;
+        return registry(stack) + (meta == 0 ? "" : ":" + meta);
     }
 
     public static String resourceID(ItemStack stack) {
@@ -53,35 +59,33 @@ public final class ResourceNormalizer {
                 .getName();
     }
 
-    private static JsonObject item(ItemStack stack, long amount, EntityPlayer player, int tooltipLines,
-        boolean includeID) {
+    private static JsonObject item(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
         JsonObject result = new JsonObject();
-        result.addProperty("kind", "item");
-        if (includeID) result.addProperty("id", itemID(stack));
-        result.addProperty("amount", amount);
-        result.addProperty("text", formattedItem(stack, player, tooltipLines));
+        result.addProperty("id", itemID(stack));
+        result.addProperty("item", formattedItem(stack, amount, player, tooltipLines, false));
         return result;
     }
 
-    private static JsonObject fluid(FluidStack stack, long amount, boolean includeID) {
+    private static JsonObject fluid(FluidStack stack, long amount) {
         JsonObject result = new JsonObject();
-        result.addProperty("kind", "fluid");
-        if (includeID) result.addProperty(
+        result.addProperty(
             "id",
             stack.getFluid()
                 .getName());
-        result.addProperty("amount", amount);
-        result.addProperty("text", clean(stack.getLocalizedName()));
+        result.addProperty("item", amount + "× " + clean(stack.getLocalizedName()));
         return result;
     }
 
-    private static String formattedItem(ItemStack stack, EntityPlayer player, int tooltipLines) {
-        StringBuilder result = new StringBuilder(clean(stack.getDisplayName()));
-        result.append(" [")
-            .append(modID(stack))
-            .append(']');
-        JsonArray lines = tooltip(stack, player, tooltipLines, true, false);
-        for (int i = 0; i < lines.size(); i++) result.append('\n')
+    private static String formattedItem(ItemStack stack, long amount, EntityPlayer player, int tooltipLines,
+        boolean advanced) {
+        JsonArray lines = tooltip(stack, player, tooltipLines, !advanced, advanced);
+        StringBuilder result = new StringBuilder(Long.toString(amount));
+        result.append("× ")
+            .append(
+                advanced && lines.size() > 0 ? lines.get(0)
+                    .getAsString() : clean(stack.getDisplayName()));
+        int start = advanced && lines.size() > 0 ? 1 : 0;
+        for (int i = start; i < lines.size(); i++) result.append('\n')
             .append(
                 lines.get(i)
                     .getAsString());
@@ -91,14 +95,18 @@ public final class ResourceNormalizer {
     private static JsonArray tooltip(ItemStack stack, EntityPlayer player, int limit, boolean skipName,
         boolean advanced) {
         JsonArray result = new JsonArray();
-        if (player == null || limit <= 0) return result;
+        if (player == null) return result;
         try {
             List<String> lines = stack.getTooltip(player, advanced);
             int start = skipName && !lines.isEmpty() ? 1 : 0;
-            for (int i = start; i < lines.size() && result.size() < limit; i++) {
+            boolean truncated = false;
+            for (int i = start; i < lines.size(); i++) {
                 String line = clean(lines.get(i));
-                if (!line.isEmpty()) result.add(new JsonPrimitive(line));
+                if (line.isEmpty()) continue;
+                if (result.size() < limit) result.add(new JsonPrimitive(line));
+                else truncated = true;
             }
+            if (skipName && truncated) result.add(new JsonPrimitive("… (more tooltip lines)"));
         } catch (RuntimeException ignored) {}
         return result;
     }
@@ -114,12 +122,6 @@ public final class ResourceNormalizer {
             .getNameForObject(stack.getItem());
         return name == null ? stack.getItem()
             .getUnlocalizedName() : name;
-    }
-
-    private static String modID(ItemStack stack) {
-        String name = registry(stack);
-        int colon = name.indexOf(':');
-        return colon < 0 ? name : name.substring(0, colon);
     }
 
     private static String clean(String value) {
