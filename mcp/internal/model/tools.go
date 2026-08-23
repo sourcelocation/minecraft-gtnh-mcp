@@ -1,23 +1,17 @@
 package model
 
-import "encoding/json"
-
 type ItemLookupRequest struct {
 	Query  string `json:"query"`
 	Offset int    `json:"offset,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
 }
 type RecipeLookupRequest struct {
-	Resource ResourceSelector `json:"resource"`
-	Offset   int              `json:"offset,omitempty"`
-	Limit    int              `json:"limit,omitempty"`
-}
-type ResourceSelector struct {
-	ID    string `json:"id,omitempty"`
-	Query string `json:"query,omitempty"`
+	ID     string `json:"id" jsonschema:"exact short resource ID, such as gregtech:gt.blockmachines:1401"`
+	Offset int    `json:"offset,omitempty"`
+	Limit  int    `json:"limit,omitempty"`
 }
 type RecipeGetRequest struct {
-	ID json.RawMessage `json:"id"`
+	RecipeID string `json:"recipe_id" jsonschema:"short recipe_id returned by lookup_recipes, lookup_uses, or recipe_paths"`
 }
 type RecipePathsRequest struct {
 	Starts            []string `json:"starts,omitempty"`

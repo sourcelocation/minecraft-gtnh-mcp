@@ -28,9 +28,9 @@ func newServer(client bridgeClient) *mcp.Server {
 	addBridgeTool(server, client, "player", "Current player position and compact inventory summaries", "player", model.PlayerRequest{})
 	addBridgeTool(server, client, "player_slot", "Inspect the exact live item stack in a player inventory slot", "player_slot", model.PlayerSlotRequest{})
 	addBridgeTool(server, client, "item_lookup", "Find generic item IDs in the loaded NEI catalog", "item_lookup", model.ItemLookupRequest{})
-	addBridgeTool(server, client, "lookup_recipes", "Find recipes that produce a resource", "lookup_recipes", model.RecipeLookupRequest{})
-	addBridgeTool(server, client, "lookup_uses", "Find recipes that consume a resource", "lookup_uses", model.RecipeLookupRequest{})
-	addBridgeTool(server, client, "recipe_get", "Resolve an opaque NEI recipe identifier", "recipe_get", model.RecipeGetRequest{})
+	addBridgeTool(server, client, "lookup_recipes", "Find recipes that produce an exact resource ID, grouped by NEI handler", "lookup_recipes", model.RecipeLookupRequest{})
+	addBridgeTool(server, client, "lookup_uses", "Find recipes that consume an exact resource ID, grouped by NEI handler", "lookup_uses", model.RecipeLookupRequest{})
+	addBridgeTool(server, client, "lookup_recipe", "Expand one recipe returned by a recipe, usage, or path lookup", "lookup_recipe", model.RecipeGetRequest{})
 	addBridgeTool(server, client, "recipe_paths", "Build an on-demand recipe chain using live NEI data", "recipe_paths", model.RecipePathsRequest{})
 	addBridgeTool(server, client, "quests_query", "Query BetterQuesting progress when available", "quests_query", model.QuestQueryRequest{})
 

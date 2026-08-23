@@ -20,7 +20,7 @@ public final class QueryRouter {
         register("item_lookup", recipes);
         register("lookup_recipes", recipes);
         register("lookup_uses", recipes);
-        register("recipe_get", recipes);
+        register("lookup_recipe", recipes);
         register("recipe_paths", new RecipePathProvider(recipes));
         if (Loader.isModLoaded("betterquesting")) register("quests_query", new QuestProvider());
         StatusProvider status = new StatusProvider(providers.keySet());

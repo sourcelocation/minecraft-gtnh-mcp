@@ -21,14 +21,19 @@ public final class ResourceNormalizer {
     private ResourceNormalizer() {}
 
     public static JsonObject resource(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
+        return resource(stack, amount, player, ItemFormat.compact(tooltipLines));
+    }
+
+    public static JsonObject resource(ItemStack stack, long amount, EntityPlayer player, ItemFormat format) {
         FluidStack fluid = StackInfo.getFluid(stack);
-        return fluid == null ? item(stack, amount, player, tooltipLines) : fluid(fluid, amount);
+        return fluid == null ? item(stack, amount, player, format) : fluid(fluid, amount, format);
     }
 
     public static JsonObject exactItem(ItemStack stack, EntityPlayer player) {
+        ItemFormat format = ItemFormat.detailed();
         JsonObject result = new JsonObject();
         result.addProperty("id", itemID(stack));
-        result.addProperty("item", formattedItem(stack, stack.stackSize, player, Integer.MAX_VALUE, true));
+        result.addProperty("item", formattedItem(stack, stack.stackSize, player, format.tooltipLines, format.advanced));
         if (stack.hasTagCompound()) result.addProperty(
             "nbt",
             stack.getTagCompound()
@@ -51,20 +56,22 @@ public final class ResourceNormalizer {
                 .getName();
     }
 
-    private static JsonObject item(ItemStack stack, long amount, EntityPlayer player, int tooltipLines) {
+    private static JsonObject item(ItemStack stack, long amount, EntityPlayer player, ItemFormat format) {
         JsonObject result = new JsonObject();
         result.addProperty("id", itemID(stack));
-        result.addProperty("item", formattedItem(stack, amount, player, tooltipLines, false));
+        result.addProperty("item", formattedItem(stack, amount, player, format.tooltipLines, format.advanced));
+        if (format.chance != null && format.chance.doubleValue() != 1.0) result.addProperty("chance", format.chance);
         return result;
     }
 
-    private static JsonObject fluid(FluidStack stack, long amount) {
+    private static JsonObject fluid(FluidStack stack, long amount, ItemFormat format) {
         JsonObject result = new JsonObject();
         result.addProperty(
             "id",
             stack.getFluid()
                 .getName());
         result.addProperty("item", amount + "× " + clean(stack.getLocalizedName()));
+        if (format.chance != null && format.chance.doubleValue() != 1.0) result.addProperty("chance", format.chance);
         return result;
     }
 
@@ -121,5 +128,39 @@ public final class ResourceNormalizer {
         return clean == null ? ""
             : clean.trim()
                 .replaceAll("\\s+", " ");
+    }
+
+    /** Controls the human-readable item text without changing its stable resource ID. */
+    public static final class ItemFormat {
+
+        private final int tooltipLines;
+        private final boolean advanced;
+        private final Double chance;
+
+        private ItemFormat(int tooltipLines, boolean advanced, Double chance) {
+            this.tooltipLines = tooltipLines;
+            this.advanced = advanced;
+            this.chance = chance;
+        }
+
+        public static ItemFormat compact(int tooltipLines) {
+            return new ItemFormat(tooltipLines, false, null);
+        }
+
+        public static ItemFormat detailed() {
+            return new ItemFormat(Integer.MAX_VALUE, true, null);
+        }
+
+        public ItemFormat withTooltipLines(int tooltipLines) {
+            return new ItemFormat(tooltipLines, advanced, chance);
+        }
+
+        public ItemFormat withAdvancedTooltip(boolean advanced) {
+            return new ItemFormat(tooltipLines, advanced, chance);
+        }
+
+        public ItemFormat withChance(double chance) {
+            return new ItemFormat(tooltipLines, advanced, chance);
+        }
     }
 }

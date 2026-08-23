@@ -21,8 +21,6 @@ import com.google.gson.JsonPrimitive;
 
 import codechicken.nei.PositionedStack;
 import codechicken.nei.recipe.GuiCraftingRecipe;
-import codechicken.nei.recipe.GuiRecipeTab;
-import codechicken.nei.recipe.HandlerInfo;
 import codechicken.nei.recipe.IRecipeHandler;
 import codechicken.nei.recipe.Recipe;
 import codechicken.nei.recipe.RecipeCatalysts;
@@ -52,7 +50,7 @@ final class RecipePathProvider implements QueryProvider {
         private final Set<String> excluded = new HashSet<String>();
         private final Set<String> inventory = new HashSet<String>();
         private final Set<String> active = new HashSet<String>();
-        private final Set<String> machineSet = new LinkedHashSet<String>();
+        private final Map<String, JsonObject> machineMap = new HashMap<String, JsonObject>();
         private final Set<String> warningSet = new LinkedHashSet<String>();
         private final Map<String, Double> balance = new HashMap<String, Double>();
         private final JsonArray flows = new JsonArray();
@@ -93,9 +91,9 @@ final class RecipePathProvider implements QueryProvider {
             for (String id : ids) balances.addProperty(id, balance.get(id));
             result.add("balance", balances);
             JsonArray machines = new JsonArray();
-            List<String> sortedMachines = new ArrayList<String>(machineSet);
+            List<String> sortedMachines = new ArrayList<String>(machineMap.keySet());
             Collections.sort(sortedMachines);
-            for (String machine : sortedMachines) machines.add(new JsonPrimitive(machine));
+            for (String machine : sortedMachines) machines.add(machineMap.get(machine));
             result.add("machines", machines);
             result.addProperty("complete", complete && noDeficit());
             if (!warningSet.isEmpty()) {
@@ -242,13 +240,17 @@ final class RecipePathProvider implements QueryProvider {
 
         private void addFlow(Candidate selected, double runs) {
             JsonObject flow = new JsonObject();
-            flow.add(
-                "recipe_id",
-                selected.recipe.getRecipeId()
-                    .toJsonObject());
-            String machine = machine(selected.handler);
-            flow.addProperty("machine", machine);
-            machineSet.add(machine);
+            flow.addProperty("recipe_id", recipes.recipeID(selected.recipe));
+            flow.addProperty("handler_id", selected.handler.getHandlerId());
+            flow.addProperty("handler_name", selected.recipe.getHandlerName());
+            JsonObject machine = machine(selected.handler);
+            if (machine != null) {
+                flow.add("machine", machine);
+                machineMap.put(
+                    machine.get("id")
+                        .getAsString(),
+                    machine);
+            }
             flow.addProperty("runs", runs);
             flow.add("inputs", recipes.groups(selected.recipe.getIngredients(), true));
             flow.add("outputs", recipes.groups(selected.recipe.getResults(), false));
@@ -256,16 +258,12 @@ final class RecipePathProvider implements QueryProvider {
             flows.add(flow);
         }
 
-        private String machine(IRecipeHandler handler) {
+        private JsonObject machine(IRecipeHandler handler) {
             List<PositionedStack> catalysts = RecipeCatalysts.getRecipeCatalysts(handler);
             if (catalysts != null)
                 for (PositionedStack catalyst : catalysts) if (catalyst != null && catalyst.item != null)
-                    return ResourceNormalizer.resource(catalyst.item, 1, player, 2)
-                        .get("item")
-                        .getAsString();
-            HandlerInfo info = GuiRecipeTab.getHandlerInfo(handler);
-            if (info != null && info.getHandlerName() != null) return info.getHandlerName();
-            return handler.getRecipeName();
+                    return ResourceNormalizer.resource(catalyst.item, 1, player, 2);
+            return null;
         }
 
         private void enrichGT(JsonObject flow, Candidate selected) {
