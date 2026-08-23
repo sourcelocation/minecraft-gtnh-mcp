@@ -2,7 +2,7 @@ package model
 
 import "encoding/json"
 
-type CatalogRequest struct {
+type ItemLookupRequest struct {
 	Query  string `json:"query"`
 	Offset int    `json:"offset,omitempty"`
 	Limit  int    `json:"limit,omitempty"`
@@ -36,10 +36,6 @@ type GraphRequest struct {
 	MaxRecipes   int      `json:"max_recipes,omitempty"`
 	MaxResources int      `json:"max_resources,omitempty"`
 }
-type GraphResponse struct {
-	Envelope `json:"envelope"`
-	Data     RecipeData `json:"data"`
-}
 type QuestQueryRequest struct {
 	ID        string   `json:"id,omitempty"`
 	Query     string   `json:"query,omitempty"`
@@ -49,4 +45,10 @@ type QuestQueryRequest struct {
 	Limit     int      `json:"limit,omitempty"`
 }
 type StatusRequest struct{}
-type PlayerRequest struct{}
+type PlayerRequest struct {
+	TooltipMaxLines int `json:"tooltip_max_lines,omitempty" jsonschema:"additional tooltip lines per inventory item, from 0 to 10"`
+}
+type PlayerSlotRequest struct {
+	Scope string `json:"scope" jsonschema:"inventory scope: main or armor"`
+	Slot  int    `json:"slot" jsonschema:"zero-based slot number"`
+}

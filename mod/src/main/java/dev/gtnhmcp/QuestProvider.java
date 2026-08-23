@@ -9,11 +9,7 @@ final class QuestProvider implements QueryProvider {
     private final BetterQuestingProvider quests = new BetterQuestingProvider();
 
     public JsonObject query(String method, JsonObject params) {
-        if (Minecraft.getMinecraft().thePlayer == null) return BridgeResponses.unsupported("player unavailable");
-        return BridgeResponses.response(
-            quests.query(params, Minecraft.getMinecraft().thePlayer),
-            "client",
-            Minecraft.getMinecraft()
-                .isSingleplayer() ? "authoritative" : "observed");
+        if (Minecraft.getMinecraft().thePlayer == null) return BridgeResponses.error("player unavailable");
+        return quests.query(params, Minecraft.getMinecraft().thePlayer);
     }
 }

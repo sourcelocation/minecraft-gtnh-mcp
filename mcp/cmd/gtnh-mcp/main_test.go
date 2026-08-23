@@ -41,8 +41,8 @@ func TestServerPublishesExpectedTools(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Tools) != 7 {
-		t.Fatalf("expected 7 tools, got %d", len(result.Tools))
+	if len(result.Tools) != 8 {
+		t.Fatalf("expected 8 tools, got %d", len(result.Tools))
 	}
 	for _, tool := range result.Tools {
 		if tool.InputSchema == nil {
@@ -59,7 +59,7 @@ func TestServerPublishesExpectedTools(t *testing.T) {
 
 func TestBridgeToolForwardsJavaJSONAsText(t *testing.T) {
 	ctx := context.Background()
-	payload := []byte(`{"envelope":{"schema":"gtnh-mcp/v1","source":"client","captured_at":"2026-08-22T00:00:00Z","completeness":"observed"},"data":{"connected":true}}`)
+	payload := []byte(`{"connected":true}`)
 	clientTransport, serverTransport := mcp.NewInMemoryTransports()
 	serverSession, err := newServer(&fakeBridge{response: payload}).Connect(ctx, serverTransport, nil)
 	if err != nil {

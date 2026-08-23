@@ -1,5 +1,7 @@
 package dev.gtnhmcp;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
 
 import com.google.gson.JsonArray;
@@ -18,16 +20,15 @@ import codechicken.nei.recipe.Recipe;
 public final class RecipeProvider implements QueryProvider {
 
     public JsonObject query(String method, JsonObject params) {
-        if ("catalog_search".equals(method)) return catalog(params);
+        if ("item_lookup".equals(method)) return itemLookup(params);
         if ("recipe_lookup".equals(method)) return lookup(params);
         if ("recipes.graph".equals(method)) return graph(params);
         if ("recipe_get".equals(method)) return recipeGet(params);
         throw new IllegalArgumentException("unknown recipe method: " + method);
     }
 
-    private JsonObject catalog(JsonObject p) {
-        if (!ItemList.loadFinished || ItemList.items == null)
-            return BridgeResponses.response(new JsonObject(), "client", "partial", "NEI item list loading");
+    private JsonObject itemLookup(JsonObject p) {
+        if (!ItemList.loadFinished || ItemList.items == null) return BridgeResponses.error("NEI item list loading");
         String q = p.has("query") ? p.get("query")
             .getAsString() : "";
         int offset = integer(p, "offset", 0, 0, 100000), limit = integer(p, "limit", 50, 1, 200), seen = 0;
@@ -41,7 +42,7 @@ public final class RecipeProvider implements QueryProvider {
                 more = true;
                 break;
             }
-            rows.add(ResourceNormalizer.resource(s, s.stackSize));
+            rows.add(ResourceNormalizer.identifiedResource(s, s.stackSize, player(), 2));
         }
         JsonObject d = new JsonObject();
         d.add("items", rows);
@@ -49,19 +50,16 @@ public final class RecipeProvider implements QueryProvider {
         d.addProperty("limit", limit);
         d.addProperty("next_offset", offset + rows.size());
         d.addProperty("truncated", more);
-        return BridgeResponses.response(d, "client", "observed");
+        return d;
     }
 
     private JsonObject lookup(JsonObject p) {
-        if (!p.has("resource") || !p.has("direction"))
-            return BridgeResponses.response(new JsonObject(), "client", "partial", "resource and direction required");
+        if (!p.has("resource") || !p.has("direction")) return BridgeResponses.error("resource and direction required");
         String dir = p.get("direction")
             .getAsString();
-        if (!"produces".equals(dir) && !"consumes".equals(dir))
-            return BridgeResponses.response(new JsonObject(), "client", "partial", "invalid direction");
+        if (!"produces".equals(dir) && !"consumes".equals(dir)) return BridgeResponses.error("invalid direction");
         java.util.List<ItemStack> focus = resolve(p.getAsJsonObject("resource"));
-        if (focus.isEmpty())
-            return BridgeResponses.response(new JsonObject(), "client", "partial", "resource not found");
+        if (focus.isEmpty()) return BridgeResponses.error("resource not found");
         int offset = integer(p, "offset", 0, 0, 100000), limit = integer(p, "limit", 50, 1, 200), skip = 0;
         java.util.HashSet<String> ids = new java.util.HashSet<String>();
         JsonArray a = new JsonArray();
@@ -71,7 +69,7 @@ public final class RecipeProvider implements QueryProvider {
                 ? GuiCraftingRecipe.getCraftingHandlers("item", s.copy())
                 : GuiUsageRecipe.getUsageHandlers("item", s.copy());
             for (IRecipeHandler h : hs) for (int i = 0; i < h.numRecipes(); i++) {
-                JsonObject r = normalize(h, i, Recipe.of(h, i));
+                JsonObject r = normalize(h, i, Recipe.of(h, i), false);
                 if (r == null || !ids.add(
                     r.get("id")
                         .toString()))
@@ -89,12 +87,12 @@ public final class RecipeProvider implements QueryProvider {
         d.addProperty("truncated", more);
         d.addProperty("offset", offset);
         d.addProperty("next_offset", offset + a.size());
-        return BridgeResponses.response(d, "client", "observed");
+        return d;
     }
 
     private JsonObject graph(JsonObject p) {
         if (!p.has("ends") || !p.get("ends")
-            .isJsonArray()) return BridgeResponses.response(new JsonObject(), "client", "partial", "ends required");
+            .isJsonArray()) return BridgeResponses.error("ends required");
         int max = integer(p, "max_recipes", 200, 1, 500), depth = integer(p, "max_depth", 4, 1, 16),
             maxResources = integer(p, "max_resources", 300, 1, 1000);
         long deadline = System.nanoTime() + 500000000L;
@@ -102,10 +100,7 @@ public final class RecipeProvider implements QueryProvider {
         if (p.has("starts") && p.get("starts")
             .isJsonArray())
             for (com.google.gson.JsonElement e : p.getAsJsonArray("starts"))
-                for (ItemStack st : resolveText(e.getAsString())) stops.add(
-                    ResourceNormalizer.resource(st, st.stackSize)
-                        .get("id")
-                        .getAsString());
+                for (ItemStack st : resolveText(e.getAsString())) stops.add(ResourceNormalizer.resourceID(st));
         java.util.ArrayList<ItemStack> q = new java.util.ArrayList<ItemStack>();
         for (com.google.gson.JsonElement e : p.getAsJsonArray("ends")) {
             q.addAll(resolveText(e.getAsString()));
@@ -120,11 +115,7 @@ public final class RecipeProvider implements QueryProvider {
                     reasons.add("deadline");
                     break;
                 }
-                if (!resources.add(
-                    ResourceNormalizer.resource(s, s.stackSize)
-                        .get("id")
-                        .getAsString()))
-                    continue;
+                if (!resources.add(ResourceNormalizer.resourceID(s))) continue;
                 if (resources.size() > maxResources) {
                     reasons.add("max_resources");
                     break;
@@ -132,7 +123,7 @@ public final class RecipeProvider implements QueryProvider {
                 for (IRecipeHandler h : GuiCraftingRecipe.getCraftingHandlers("item", s.copy()))
                     for (int i = 0; i < h.numRecipes() && out.size() < max; i++) {
                         Recipe raw = Recipe.of(h, i);
-                        JsonObject r = normalize(h, i, raw);
+                        JsonObject r = normalize(h, i, raw, true);
                         if (r == null || !seen.add(
                             r.get("id")
                                 .toString()))
@@ -141,10 +132,8 @@ public final class RecipeProvider implements QueryProvider {
                         for (Recipe.RecipeIngredient ingredient : raw.getIngredients()) {
                             if (ingredient.getAmount() <= 0) continue;
                             java.util.List<ItemStack> permutations = ingredient.getPermutations();
-                            if (!permutations.isEmpty() && !stops.contains(
-                                ResourceNormalizer.resource(permutations.get(0), permutations.get(0).stackSize)
-                                    .get("id")
-                                    .getAsString()))
+                            if (!permutations.isEmpty()
+                                && !stops.contains(ResourceNormalizer.resourceID(permutations.get(0))))
                                 next.add(
                                     permutations.get(0)
                                         .copy());
@@ -161,7 +150,7 @@ public final class RecipeProvider implements QueryProvider {
         JsonArray rs = new JsonArray();
         for (String reason : reasons) rs.add(new JsonPrimitive(reason));
         data.add("truncation_reasons", rs);
-        return BridgeResponses.response(data, "client", "observed");
+        return data;
     }
 
     private java.util.List<ItemStack> resolve(JsonObject s) {
@@ -174,11 +163,7 @@ public final class RecipeProvider implements QueryProvider {
         if (id == null && q == null) return out;
         codechicken.nei.api.ItemFilter f = q == null ? null : SearchField.getFilter(q);
         for (ItemStack x : ItemList.items) {
-            if ((id != null && !id.equals(
-                ResourceNormalizer.resource(x, x.stackSize)
-                    .get("id")
-                    .getAsString()))
-                || (f != null && !f.matches(x))) continue;
+            if ((id != null && !id.equals(ResourceNormalizer.resourceID(x))) || (f != null && !f.matches(x))) continue;
             out.add(x);
             if (out.size() == 3) break;
         }
@@ -199,26 +184,21 @@ public final class RecipeProvider implements QueryProvider {
 
     private JsonObject recipeGet(JsonObject p) {
         if (!p.has("id") || !p.get("id")
-            .isJsonObject())
-            return BridgeResponses.response(new JsonObject(), "client", "partial", "native RecipeId object required");
+            .isJsonObject()) return BridgeResponses.error("native RecipeId object required");
         JsonObject d = new JsonObject();
         JsonObject r = null;
         try {
             codechicken.nei.recipe.Recipe nativeRecipe = codechicken.nei.recipe.Recipe
                 .of(codechicken.nei.recipe.Recipe.RecipeId.of(p.getAsJsonObject("id")));
-            if (nativeRecipe != null) r = normalize(null, -1, nativeRecipe);
+            if (nativeRecipe != null) r = normalize(null, -1, nativeRecipe, false);
         } catch (Exception ignored) {}
         d.addProperty("found", r != null);
         if (r != null) d.add("recipe", r);
-        return BridgeResponses.response(
-            d,
-            "client",
-            r == null ? "partial" : "observed",
-            r == null ? "RecipeId could not be reconstructed by NEI"
-                : "reconstructed from native NEI RecipeId; GT handler enrichment may be unavailable");
+        if (r == null) d.addProperty("error", "RecipeId could not be reconstructed by NEI");
+        return d;
     }
 
-    private JsonObject normalize(IRecipeHandler handler, int index, Recipe r) {
+    private JsonObject normalize(IRecipeHandler handler, int index, Recipe r, boolean includeResourceIDs) {
         if (r == null || r.getRecipeId() == null) return null;
         JsonObject o = new JsonObject();
         o.add(
@@ -230,8 +210,8 @@ public final class RecipeProvider implements QueryProvider {
             r.getRecipeId()
                 .getHandleName());
         o.addProperty("handler_name", r.getHandlerName());
-        o.add("inputs", groups(r.getIngredients(), true));
-        o.add("outputs", groups(r.getResults(), false));
+        o.add("inputs", groups(r.getIngredients(), true, includeResourceIDs));
+        o.add("outputs", groups(r.getResults(), false, includeResourceIDs));
         if (handler instanceof gregtech.nei.GTNEIDefaultHandler) {
             gregtech.nei.GTNEIDefaultHandler gt = (gregtech.nei.GTNEIDefaultHandler) handler;
             if (gt.getRecipeMap() != null) o.addProperty(
@@ -242,12 +222,14 @@ public final class RecipeProvider implements QueryProvider {
         return o;
     }
 
-    private JsonArray groups(java.util.List<Recipe.RecipeIngredient> in, boolean consumed) {
+    private JsonArray groups(java.util.List<Recipe.RecipeIngredient> in, boolean consumed, boolean includeResourceIDs) {
         JsonArray a = new JsonArray();
         for (Recipe.RecipeIngredient g : in) {
             JsonObject x = new JsonObject();
             JsonArray alts = new JsonArray();
-            for (ItemStack s : g.getPermutations()) alts.add(ResourceNormalizer.resource(s, g.getAmount()));
+            for (ItemStack s : g.getPermutations()) alts.add(
+                includeResourceIDs ? ResourceNormalizer.identifiedResource(s, g.getAmount(), player(), 2)
+                    : ResourceNormalizer.resource(s, g.getAmount(), player(), 2));
             x.add("alternatives", alts);
             x.addProperty("consumed", consumed && g.getAmount() > 0);
             x.addProperty("catalyst", consumed && g.getAmount() <= 0);
@@ -255,6 +237,10 @@ public final class RecipeProvider implements QueryProvider {
             a.add(x);
         }
         return a;
+    }
+
+    private EntityPlayer player() {
+        return Minecraft.getMinecraft().thePlayer;
     }
 
     private int integer(JsonObject p, String name, int def, int lo, int hi) {

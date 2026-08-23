@@ -17,7 +17,7 @@ public final class QueryRouter {
     public QueryRouter(ClientDispatcher dispatcher) {
         this.dispatcher = dispatcher;
         RecipeProvider recipes = new RecipeProvider();
-        register("catalog_search", recipes);
+        register("item_lookup", recipes);
         register("recipe_lookup", recipes);
         register("recipes.graph", recipes);
         register("recipe_get", recipes);
@@ -25,6 +25,7 @@ public final class QueryRouter {
         StatusProvider status = new StatusProvider(providers.keySet());
         register("status", status);
         register("player", status);
+        register("player_slot", status);
     }
 
     private void register(String method, QueryProvider provider) {
@@ -33,7 +34,7 @@ public final class QueryRouter {
 
     public JsonObject query(final String method, final JsonObject params) throws Exception {
         final QueryProvider provider = providers.get(method);
-        if (provider == null) return BridgeResponses.unsupported("unknown method: " + method);
+        if (provider == null) return BridgeResponses.error("unknown method: " + method);
         return dispatcher.call(new Callable<JsonObject>() {
 
             public JsonObject call() {
