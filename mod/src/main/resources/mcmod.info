@@ -1,21 +1,11 @@
-{
-  "modListVersion": 2,
-  "modList": [{
-    "modid": "${modId}",
-    "name": "${modName}",
-    "description": "Read-only local bridge exposing GT: New Horizons data to MCP clients.",
-    "version": "${modVersion}",
-    "mcversion": "${minecraftVersion}",
-    "url": "https://github.com/gtnh-mcp/gtnh-mcp",
-    "updateUrl": "",
-    "authorList": ["GTNH MCP contributors"],
-    "credits": "GT New Horizons and the Model Context Protocol projects",
-    "logoFile": "",
-    "screenshots": [],
-    "parent": "",
-    "requiredMods": ["NotEnoughItems", "gregtech"],
-    "dependencies": ["after:betterquesting"],
-    "dependants": [],
-    "useDependencyInformation": false
-  }]
-}
+[{
+  "modid": "${modId}",
+  "name": "${modName}",
+  "description": "Read-only MCP server exposing your GT New Horizons game to AI clients on 127.0.0.1:8765/mcp.",
+  "version": "${modVersion}",
+  "mcversion": "${minecraftVersion}",
+  "url": "https://github.com/sourcelocation/minecraft-gtnh-mcp",
+  "authorList": ["sourcelocation"],
+  "requiredMods": ["NotEnoughItems", "gregtech"],
+  "dependencies": ["after:betterquesting"]
+}]

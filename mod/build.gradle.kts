@@ -2,11 +2,14 @@ plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
-val distributableJar = tasks.named("reobfJar")
+// Relocate the shaded libraries' META-INF/services entries along with their classes.
+tasks.named("shadowJar") { withGroovyBuilder { "mergeServiceFiles"() } }
 
-tasks.register<Copy>("stageModJar") {
-    dependsOn(distributableJar)
-    from(distributableJar.map { it.outputs.files })
-    into(layout.projectDirectory.dir("../dist"))
-    rename { "gtnh-mcp-mod.jar" }
+// ./gradlew install -PgtnhDir=<instance .minecraft>, or set gtnhDir in ~/.gradle/gradle.properties.
+tasks.register<Copy>("install") {
+    group = "distribution"
+    description = "Builds the mod and copies it into <gtnhDir>/mods."
+    from(tasks.named("reobfJar"))
+    into(providers.gradleProperty("gtnhDir").map { File(it, "mods") })
+    rename { "gtnh-mcp.jar" }
 }

@@ -1,30 +1,28 @@
 # GTNH MCP
 
-GTNH MCP is a client-side AI companion for GT New Horizons Minecraft modpack that understands your inventory, quests, recipes, and what to build next.
-
-GTNH MCP pairs a lightweight Minecraft mod with a local MCP server. It is read-only and stays on your machine.
+A GT New Horizons client mod that runs a read-only [MCP](https://modelcontextprotocol.io) server, so AI clients can read your live NEI recipes, inventory and BetterQuesting progress.
 
 ## Install
 
-Currently supports only Linux and macOS.
+Needs GTNH on Java 17+.
 
-```sh
-GTNH_INSTANCE_DIR=/absolute/path/to/GTNH ./scripts/install.sh
-```
+1. `./gradlew install -PgtnhDir=<instance>/.minecraft`, or copy `mod/build/libs/gtnh-mcp-*.jar` into `mods/`.
+2. While the game runs, point your client at `http://127.0.0.1:8765/mcp`:
+   - Claude Code: `claude mcp add --transport http gtnh http://127.0.0.1:8765/mcp`
+   - stdio-only clients: `npx mcp-remote http://127.0.0.1:8765/mcp`
 
-This installs the mod jar into the instance and `gtnh-mcp` into `~/.local/bin` by default. Configure your MCP client to run `gtnh-mcp` without arguments. Minecraft can start before or after the MCP server.
+## Tools
+
+| Tool | Returns |
+|---|---|
+| `find_items` | Items matching an NEI search, with ids |
+| `find_recipes` | Recipes making an item, or using it (`uses`) |
+| `get_recipe` | One recipe by id |
+| `plan_chain` | Recipe chain from targets to raw materials |
+| `get_player` | Position and inventory |
+| `get_slot` | One slot's tooltip, ore names, NBT |
+| `find_quests`, `get_quest` | Quest progress (with BetterQuesting) |
 
 ## Develop
 
-```sh
-./scripts/check.sh
-./scripts/build.sh
-```
-
-Build artifacts are written to `dist/`.
-
-`AGENTS.md` for agents
-
-## Credits
-
-\- sourcelocation
+`./gradlew build` builds the jar; `./gradlew runClient17` starts a dev client. See [AGENTS.md](AGENTS.md).
