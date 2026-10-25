@@ -1,96 +1,62 @@
 package dev.gtnhmcp.server;
 
-import java.lang.reflect.Type;
 import java.util.Map;
-
-import org.apache.logging.log4j.Logger;
-
-import com.github.victools.jsonschema.generator.Option;
-import com.github.victools.jsonschema.generator.OptionPreset;
-import com.github.victools.jsonschema.generator.SchemaGenerator;
-import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
-import com.github.victools.jsonschema.generator.SchemaVersion;
-import com.github.victools.jsonschema.module.jackson.JacksonOption;
-import com.github.victools.jsonschema.module.jackson.JacksonSchemaModule;
+import java.util.concurrent.atomic.AtomicLong;
 
 import dev.gtnhmcp.core.Tool;
-import dev.gtnhmcp.core.ToolException;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures.SyncToolSpecification;
 import io.modelcontextprotocol.spec.McpSchema;
-import tools.jackson.core.JacksonException;
-import tools.jackson.core.type.TypeReference;
-import tools.jackson.databind.json.JsonMapper;
+import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
 
-/** Exposes a {@link Tool} as an MCP tool: generated schemas, structured output, errors as {@code isError}. */
+/** Exposes catalog entries as MCP tools and counts the calls MCP clients make. */
 final class ToolAdapter {
 
-    private static final McpSchema.ToolAnnotations READ_ONLY = new McpSchema.ToolAnnotations(
-        null,
-        true,
-        false,
-        true,
-        false,
-        null);
-    private static final TypeReference<Map<String, Object>> MAP = new TypeReference<>() {};
+    /** Every call is idempotent and closed-world; only what it touches differs. */
+    private static final Map<Tool.Access, McpSchema.ToolAnnotations> ANNOTATIONS = Map.of(
+        Tool.Access.READ,
+        new McpSchema.ToolAnnotations(null, true, false, true, false, null),
+        Tool.Access.WRITE,
+        new McpSchema.ToolAnnotations(null, false, false, true, false, null),
+        Tool.Access.DELETE,
+        new McpSchema.ToolAnnotations(null, false, true, true, false, null));
 
-    private final JsonMapper json;
-    private final ClientThread clientThread;
-    private final Logger log;
-    private final SchemaGenerator schemas;
+    private final ToolCatalog catalog;
+    private final AtomicLong calls = new AtomicLong();
 
-    ToolAdapter(JsonMapper json, ClientThread clientThread, Logger log) {
-        this.json = json;
-        this.clientThread = clientThread;
-        this.log = log;
-        this.schemas = new SchemaGenerator(
-            new SchemaGeneratorConfigBuilder(json, SchemaVersion.DRAFT_2020_12, OptionPreset.PLAIN_JSON)
-                .without(Option.SCHEMA_VERSION_INDICATOR)
-                .with(new JacksonSchemaModule(JacksonOption.RESPECT_JSONPROPERTY_REQUIRED))
-                .build());
+    ToolAdapter(ToolCatalog catalog) {
+        this.catalog = catalog;
     }
 
-    SyncToolSpecification adapt(Tool<?, ?> tool) {
+    long calls() {
+        return calls.get();
+    }
+
+    SyncToolSpecification adapt(ToolCatalog.Entry entry) {
+        Tool<?, ?> tool = entry.tool();
         McpSchema.Tool spec = McpSchema.Tool.builder(tool.name())
+            .title(tool.title())
             .description(tool.description())
-            .inputSchema(schema(tool.input()))
-            .outputSchema(schema(tool.output()))
-            .annotations(READ_ONLY)
+            .inputSchema(entry.input())
+            .outputSchema(entry.output())
+            .annotations(ANNOTATIONS.get(tool.access()))
             .build();
-        return new SyncToolSpecification(spec, (context, request) -> call(tool, request.arguments()));
+        return new SyncToolSpecification(spec, (context, request) -> {
+            calls.incrementAndGet();
+            return catalog.call(entry, request.arguments())
+                .fold(ToolAdapter::success, ToolAdapter::failure);
+        });
     }
 
-    private Map<String, Object> schema(Type type) {
-        return json.convertValue(schemas.generateSchema(type), MAP);
+    private static CallToolResult success(ToolResult.Success result) {
+        return CallToolResult.builder()
+            .structuredContent(result.structured())
+            .addTextContent(result.json())
+            .build();
     }
 
-    private <I, O> McpSchema.CallToolResult call(Tool<I, O> tool, Map<String, Object> arguments) {
-        I input;
-        try {
-            input = json.convertValue(arguments == null ? Map.of() : arguments, json.constructType(tool.input()));
-        } catch (JacksonException e) {
-            return error("Invalid arguments: " + e.getOriginalMessage());
-        }
-        try {
-            O output = clientThread.call(() -> tool.call(input));
-            Map<String, Object> structured = json.convertValue(output, MAP);
-            return McpSchema.CallToolResult.builder()
-                .structuredContent(structured)
-                .addTextContent(json.writeValueAsString(structured))
-                .build();
-        } catch (ToolException e) {
-            return error(e.getMessage());
-        } catch (Exception e) {
-            log.warn("Tool {} failed", tool.name(), e);
-            return error(
-                e.getClass()
-                    .getSimpleName() + ": "
-                    + e.getMessage());
-        }
-    }
-
-    private static McpSchema.CallToolResult error(String message) {
-        return McpSchema.CallToolResult.builder()
-            .addTextContent(message)
+    private static CallToolResult failure(ToolResult.Failure result) {
+        return CallToolResult.builder()
+            .addTextContent(result.message())
             .isError(true)
             .build();
     }

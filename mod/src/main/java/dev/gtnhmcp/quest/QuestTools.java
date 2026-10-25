@@ -15,17 +15,20 @@ import betterquesting.api.questing.IQuest;
 import dev.gtnhmcp.core.AbstractTool;
 import dev.gtnhmcp.core.Game;
 import dev.gtnhmcp.core.Page;
+import dev.gtnhmcp.core.Stack;
 import dev.gtnhmcp.core.ToolException;
 
 final class QuestTools {
 
     private QuestTools() {}
 
-    public record Search(@JsonPropertyDescription("text in name or description") String query,
+    public record Search(
+        @JsonPropertyDescription("text in the quest's name, description or required items") String query,
         @JsonPropertyDescription("locked, unlocked, unclaimed or completed") String state,
         @JsonPropertyDescription("text in the chapter name") String chapter, String cursor, Integer limit) {}
 
-    public record Quest(String id, String name, String state, List<String> chapters) {}
+    public record Quest(String id, String name, String state, List<String> chapters,
+        @JsonPropertyDescription("items and fluids its tasks ask for") List<Stack> needs) {}
 
     public record Quests(List<Quest> items, String next,
         @JsonPropertyDescription("completed of total, ignoring the state filter") int completed, int total) {}
@@ -33,7 +36,7 @@ final class QuestTools {
     public record QuestRef(@JsonProperty(required = true) String id) {}
 
     public record QuestDetail(String id, String name, String state, String description, List<String> chapters,
-        List<Quest> requires) {}
+        List<Stack> needs, List<Quest> requires) {}
 
     static final class FindQuests extends AbstractTool<Search, Quests> {
 
@@ -41,7 +44,10 @@ final class QuestTools {
         private final QuestBook book;
 
         FindQuests(Game game, QuestBook book) {
-            super("find_quests", "Search BetterQuesting quests with the player's progress.");
+            super(
+                "find_quests",
+                "Find quests",
+                "Search BetterQuesting quests by what they say or ask for, with the player's progress.");
             this.game = game;
             this.book = book;
         }
@@ -49,21 +55,11 @@ final class QuestTools {
         public Quests call(Search s) {
             EntityPlayer player = game.player();
             Map<UUID, List<String>> chapters = book.chapters();
+            Predicate<String> query = s.query() == null ? text -> true : contains(s.query());
             List<Quest> matches = book.quests()
-                .filter(
-                    e -> matches(s.query(), book.name(e.getKey(), e.getValue()))
-                        || matches(s.query(), book.description(e.getKey(), e.getValue())))
-                .map(
-                    e -> new Quest(
-                        e.getKey()
-                            .toString(),
-                        book.name(e.getKey(), e.getValue()),
-                        book.state(e.getValue(), player),
-                        chapters.getOrDefault(e.getKey(), List.of())))
-                .filter(
-                    q -> s.chapter() == null || q.chapters()
-                        .stream()
-                        .anyMatch(contains(s.chapter())))
+                .filter(e -> inChapter(chapters.getOrDefault(e.getKey(), List.of()), s.chapter()))
+                .filter(e -> s.query() == null || mentions(e.getKey(), e.getValue(), query))
+                .map(e -> row(e.getKey(), e.getValue(), chapters, player))
                 .toList();
             // Progress covers the query and chapter, not the state filter, so it stays meaningful.
             int completed = (int) matches.stream()
@@ -79,8 +75,28 @@ final class QuestTools {
             return new Quests(page.items(), page.next(), completed, matches.size());
         }
 
-        private static boolean matches(String query, String text) {
-            return query == null || contains(query).test(text);
+        private boolean mentions(UUID id, IQuest quest, Predicate<String> query) {
+            return query.test(book.name(id, quest)) || query.test(book.description(id, quest))
+                || book.needs(quest)
+                    .stream()
+                    .anyMatch(
+                        need -> query.test(
+                            need.item()
+                                .name()));
+        }
+
+        private Quest row(UUID id, IQuest quest, Map<UUID, List<String>> chapters, EntityPlayer player) {
+            return new Quest(
+                id.toString(),
+                book.name(id, quest),
+                book.state(quest, player),
+                chapters.getOrDefault(id, List.of()),
+                book.needs(quest));
+        }
+
+        private static boolean inChapter(List<String> chapters, String chapter) {
+            return chapter == null || chapters.stream()
+                .anyMatch(contains(chapter));
         }
     }
 
@@ -90,7 +106,7 @@ final class QuestTools {
         private final QuestBook book;
 
         GetQuest(Game game, QuestBook book) {
-            super("get_quest", "One quest's description, chapters and prerequisites.");
+            super("get_quest", "Quest", "One quest's description, needs, chapters and prerequisites.");
             this.game = game;
             this.book = book;
         }
@@ -99,12 +115,11 @@ final class QuestTools {
             EntityPlayer player = game.player();
             UUID id = uuid(ref.id());
             IQuest quest = book.quest(id);
-            Map<UUID, List<String>> chapters = book.chapters();
             List<Quest> requires = quest.getRequirements()
                 .stream()
                 .map(r -> {
                     IQuest required = book.quest(r);
-                    return new Quest(r.toString(), book.name(r, required), book.state(required, player), null);
+                    return new Quest(r.toString(), book.name(r, required), book.state(required, player), null, null);
                 })
                 .toList();
             return new QuestDetail(
@@ -112,7 +127,9 @@ final class QuestTools {
                 book.name(id, quest),
                 book.state(quest, player),
                 book.description(id, quest),
-                chapters.getOrDefault(id, List.of()),
+                book.chapters()
+                    .getOrDefault(id, List.of()),
+                book.needs(quest),
                 requires);
         }
 

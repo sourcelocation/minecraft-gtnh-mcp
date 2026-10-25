@@ -15,7 +15,7 @@ public final class QuestModule implements ToolModule {
     }
 
     public List<Tool<?, ?>> tools(Game game) {
-        QuestBook book = new QuestBook();
+        QuestBook book = new QuestBook(game.items());
         return List.of(new QuestTools.FindQuests(game, book), new QuestTools.GetQuest(game, book));
     }
 }

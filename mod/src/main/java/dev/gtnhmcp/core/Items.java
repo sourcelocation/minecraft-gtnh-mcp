@@ -19,7 +19,11 @@ public interface Items {
     /** Tooltip lines without formatting codes, name excluded. */
     List<String> tooltip(ItemStack stack);
 
+    default Item item(ItemStack stack) {
+        return new Item(id(stack), name(stack));
+    }
+
     default Stack stack(ItemStack stack, long amount) {
-        return new Stack(id(stack), name(stack), amount);
+        return new Stack(item(stack), amount);
     }
 }

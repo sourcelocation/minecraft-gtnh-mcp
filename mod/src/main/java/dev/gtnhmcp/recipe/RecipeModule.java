@@ -26,17 +26,24 @@ public final class RecipeModule implements ToolModule {
 
     public List<Tool<?, ?>> tools(Game game) {
         RecipeBook book = new RecipeBook();
+        RecipeSearch search = new RecipeSearch(book, new RecipeSources(Extension.load(RecyclingRule.class)));
         RecipeRenderer renderer = new RecipeRenderer(game.items(), book, Extension.load(RecipeDetail.class));
-        ChainPlanner planner = new ChainPlanner(game.items(), book, renderer);
+        ChainPlanner planner = new ChainPlanner(game.items(), search, renderer);
         return List.of(
-            new FindRecipes(game.items(), book, renderer),
+            new FindRecipes(game.items(), search, renderer),
             new GetRecipe(book, renderer),
             new PlanChain(game, planner));
     }
 
     public record Lookup(@JsonProperty(required = true) @JsonPropertyDescription("item id or NEI search") String item,
-        @JsonPropertyDescription("true for recipes that consume the item") Boolean uses, String cursor,
-        Integer limit) {}
+        @JsonPropertyDescription("true for recipes that consume the item") Boolean uses,
+        @JsonPropertyDescription("only this machine's recipes, e.g. one listed under collapsed") String machine,
+        @JsonPropertyDescription("include recycling (parts back to raw material); default false") Boolean recycling,
+        String cursor, Integer limit) {}
+
+    public record Recipes(List<RecipeView> items,
+        @JsonPropertyDescription("machines whose recipes are only counted; pass one as machine to list them") Map<String, Integer> collapsed,
+        @JsonPropertyDescription("pass as cursor for the next page") String next) {}
 
     public record RecipeRef(@JsonProperty(required = true) String id) {}
 
@@ -47,25 +54,35 @@ public final class RecipeModule implements ToolModule {
         @JsonPropertyDescription("item ids no step may consume") List<String> avoid,
         @JsonPropertyDescription("distinct recipes, default 12, max 64") Integer max_steps) {}
 
-    static final class FindRecipes extends AbstractTool<Lookup, Page<RecipeView>> {
+    static final class FindRecipes extends AbstractTool<Lookup, Recipes> {
 
         private final Items items;
-        private final RecipeBook book;
+        private final RecipeSearch search;
         private final RecipeRenderer renderer;
 
-        FindRecipes(Items items, RecipeBook book, RecipeRenderer renderer) {
-            super("find_recipes", "NEI recipes that make an item, or use it with uses=true. Default limit 10.");
+        FindRecipes(Items items, RecipeSearch search, RecipeRenderer renderer) {
+            super(
+                "find_recipes",
+                "Find recipes",
+                "NEI recipes that make an item, or use it with uses=true. Default limit 10. Recycling is left out, "
+                    + "and rare or duplicate sources are only counted under collapsed.");
             this.items = items;
-            this.book = book;
+            this.search = search;
             this.renderer = renderer;
         }
 
-        public Page<RecipeView> call(Lookup q) {
-            ItemStack stack = items.resolve(q.item());
-            return Page.of(
-                (Boolean.TRUE.equals(q.uses()) ? book.consuming(stack) : book.producing(stack)).map(renderer::render),
+        public Recipes call(Lookup q) {
+            RecipeSearch.Result result = search.find(
+                items.resolve(q.item()),
+                Boolean.TRUE.equals(q.uses()),
+                q.machine(),
+                Boolean.TRUE.equals(q.recycling()));
+            Page<RecipeView> page = Page.of(
+                result.recipes()
+                    .map(renderer::render),
                 q.cursor(),
                 q.limit() == null ? 10 : q.limit());
+            return new Recipes(page.items(), result.collapsed(), page.next());
         }
     }
 
@@ -75,7 +92,7 @@ public final class RecipeModule implements ToolModule {
         private final RecipeRenderer renderer;
 
         GetRecipe(RecipeBook book, RecipeRenderer renderer) {
-            super("get_recipe", "One recipe by an id from find_recipes or plan_chain.");
+            super("get_recipe", "Recipe", "One recipe by an id from find_recipes or plan_chain.");
             this.book = book;
             this.renderer = renderer;
         }
@@ -93,6 +110,7 @@ public final class RecipeModule implements ToolModule {
         PlanChain(Game game, ChainPlanner planner) {
             super(
                 "plan_chain",
+                "Plan recipe chain",
                 "Plan a recipe chain for targets down to raw materials, preferring supplied and inventory items.");
             this.game = game;
             this.planner = planner;

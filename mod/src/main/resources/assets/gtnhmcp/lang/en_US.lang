@@ -1,0 +1,16 @@
+gtnhmcp.command.running=Running on %s with %s tools; %s calls so far.
+gtnhmcp.command.stopped=Stopped. AI clients cannot connect until you turn it on.
+gtnhmcp.command.failed=Could not start; is another program using the port? See the log.
+gtnhmcp.command.copied=Copied to clipboard: %s
+gtnhmcp.command.other_clients=Other clients: add an HTTP MCP server with URL %s
+gtnhmcp.command.usage=Usage: %s
+
+gtnhmcp.debug.run=Run
+gtnhmcp.debug.copy=Copy
+
+gtnhmcp.config=GTNH MCP
+gtnhmcp.config.enabled=Enabled
+gtnhmcp.config.port=Port
+gtnhmcp.config.console=Tool console...
+gtnhmcp.config.console.tooltip=Run any MCP tool yourself and see exactly what an AI client receives.
+gtnhmcp.debug.tools=Tools

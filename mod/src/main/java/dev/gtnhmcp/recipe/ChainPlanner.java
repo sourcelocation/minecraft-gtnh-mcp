@@ -25,12 +25,12 @@ final class ChainPlanner {
     private static final int MAX_CANDIDATES = 64;
 
     private final Items items;
-    private final RecipeBook book;
+    private final RecipeSearch search;
     private final RecipeRenderer renderer;
 
-    ChainPlanner(Items items, RecipeBook book, RecipeRenderer renderer) {
+    ChainPlanner(Items items, RecipeSearch search, RecipeRenderer renderer) {
         this.items = items;
-        this.book = book;
+        this.search = search;
         this.renderer = renderer;
     }
 
@@ -109,7 +109,8 @@ final class ChainPlanner {
         }
 
         private List<Candidate> candidates(ItemStack wanted) {
-            return book.producing(wanted)
+            return search.find(wanted, false, null, false)
+                .recipes()
                 .limit(MAX_CANDIDATES)
                 .map(ref -> new Candidate(ref, Recipe.of(ref)))
                 .filter(c -> c.recipe() != null && made(c.recipe(), wanted) > 0)

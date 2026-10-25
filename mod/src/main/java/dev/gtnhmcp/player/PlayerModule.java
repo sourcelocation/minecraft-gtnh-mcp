@@ -1,8 +1,9 @@
 package dev.gtnhmcp.player;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import dev.gtnhmcp.core.AbstractTool;
 import dev.gtnhmcp.core.Game;
 import dev.gtnhmcp.core.Items;
+import dev.gtnhmcp.core.Stack;
 import dev.gtnhmcp.core.Tool;
 import dev.gtnhmcp.core.ToolException;
 import dev.gtnhmcp.core.ToolModule;
@@ -30,14 +32,11 @@ public final class PlayerModule implements ToolModule {
     public record None() {}
 
     public record Player(String name, int dim, int x, int y, int z,
-        @JsonPropertyDescription("0-35 main, 36-39 armor") List<Slot> inventory) {}
-
-    public record Slot(int slot, String id, String name, long amount) {}
+        @JsonPropertyDescription("by slot: 0-35 main, 36-39 armor") Map<Integer, Stack> inventory) {}
 
     public record SlotRef(@JsonProperty(required = true) @JsonPropertyDescription("0-35 main, 36-39 armor") int slot) {}
 
-    public record SlotDetail(int slot, String id, String name, long amount, List<String> tooltip, List<String> ore,
-        String nbt) {}
+    public record SlotDetail(Stack stack, List<String> tooltip, List<String> ore, String nbt) {}
 
     static ItemStack[] slots(EntityPlayer player) {
         ItemStack[] all = Arrays.copyOf(player.inventory.mainInventory, ARMOR + player.inventory.armorInventory.length);
@@ -50,17 +49,17 @@ public final class PlayerModule implements ToolModule {
         private final Game game;
 
         GetPlayer(Game game) {
-            super("get_player", "Player name, dimension, position and inventory.");
+            super("get_player", "Player", "Player name, dimension, position and inventory.");
             this.game = game;
         }
 
         public Player call(None none) {
             EntityPlayer player = game.player();
             Items items = game.items();
-            List<Slot> inventory = new ArrayList<>();
+            Map<Integer, Stack> inventory = new LinkedHashMap<>();
             ItemStack[] slots = slots(player);
-            for (int i = 0; i < slots.length; i++) if (slots[i] != null)
-                inventory.add(new Slot(i, items.id(slots[i]), items.name(slots[i]), slots[i].stackSize));
+            for (int i = 0; i < slots.length; i++)
+                if (slots[i] != null) inventory.put(i, items.stack(slots[i], slots[i].stackSize));
             return new Player(
                 player.getCommandSenderName(),
                 player.dimension,
@@ -76,7 +75,7 @@ public final class PlayerModule implements ToolModule {
         private final Game game;
 
         GetSlot(Game game) {
-            super("get_slot", "Full detail of one inventory slot: tooltip, ore names, NBT.");
+            super("get_slot", "Inventory slot", "Full detail of one inventory slot: tooltip, ore names, NBT.");
             this.game = game;
         }
 
@@ -91,10 +90,7 @@ public final class PlayerModule implements ToolModule {
                 .mapToObj(OreDictionary::getOreName)
                 .toList();
             return new SlotDetail(
-                ref.slot(),
-                items.id(stack),
-                items.name(stack),
-                stack.stackSize,
+                items.stack(stack, stack.stackSize),
                 items.tooltip(stack),
                 ores,
                 stack.hasTagCompound() ? stack.getTagCompound()

@@ -42,7 +42,11 @@ final class RecipeRenderer {
         Map<RecipeView.Ingredient, Long> merged = new LinkedHashMap<>();
         for (RecipeIngredient ingredient : list) {
             RecipeView.Ingredient view = ingredient(ingredient);
-            merged.merge(view.withAmount(0), view.amount(), Long::sum);
+            merged.merge(
+                view.withAmount(0),
+                view.stack()
+                    .amount(),
+                Long::sum);
         }
         return merged.entrySet()
             .stream()
@@ -58,9 +62,7 @@ final class RecipeRenderer {
         int alts = ingredient.getPermutations()
             .size();
         return new RecipeView.Ingredient(
-            items.id(stack),
-            items.name(stack),
-            kept ? Math.max(1, stack.stackSize) : ingredient.getAmount(),
+            items.stack(stack, kept ? Math.max(1, stack.stackSize) : ingredient.getAmount()),
             chance(ingredient),
             alts > 1 ? alts : null,
             kept ? Boolean.TRUE : null);

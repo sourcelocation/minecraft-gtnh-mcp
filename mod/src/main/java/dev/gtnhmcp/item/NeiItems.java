@@ -17,6 +17,7 @@ import codechicken.nei.ItemList;
 import codechicken.nei.SearchField;
 import codechicken.nei.api.ItemFilter;
 import codechicken.nei.recipe.StackInfo;
+import dev.gtnhmcp.core.Item;
 import dev.gtnhmcp.core.Items;
 import dev.gtnhmcp.core.ToolException;
 
@@ -26,7 +27,7 @@ import dev.gtnhmcp.core.ToolException;
  */
 public final class NeiItems implements Items {
 
-    private static final String FLUID = "fluid:";
+    private static final String FLUID = Item.FLUID;
     /** NEI's own fluid key, then GregTech's handler key used by older NEI builds. */
     private static final List<String> FLUID_KEYS = List.of("neiFluidName", "gtFluidName");
     private static final Set<String> PLAIN = Set.of("strId", "Damage");
@@ -54,9 +55,18 @@ public final class NeiItems implements Items {
         return stack != null ? stack : search(idOrQuery);
     }
 
+    /**
+     * NEI's fluid display stacks are named after their fluid; a filled container keeps its own name with the contents
+     * after it, e.g. {@code Large Aluminium Fluid Cell (4432 mB Molten Polyethylene)}, since its id is the container's.
+     */
     public String name(ItemStack stack) {
         FluidStack fluid = StackInfo.getFluid(stack);
-        return clean(fluid != null ? fluid.getLocalizedName() : stack.getDisplayName());
+        if (fluid == null) return clean(stack.getDisplayName());
+        String fluidName = clean(fluid.getLocalizedName());
+        if (StackInfo.isFluidDisplayItem(stack)) return fluidName;
+        String name = clean(stack.getDisplayName());
+        // GT cells already name their fluid ("Ethylene Cell"); generic containers do not.
+        return name.contains(fluidName) ? name : name + " (" + fluid.amount + " mB " + fluidName + ")";
     }
 
     public List<String> tooltip(ItemStack stack) {

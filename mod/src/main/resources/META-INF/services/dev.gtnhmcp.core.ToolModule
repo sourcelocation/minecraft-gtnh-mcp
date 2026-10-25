@@ -2,3 +2,5 @@ dev.gtnhmcp.item.ItemModule
 dev.gtnhmcp.recipe.RecipeModule
 dev.gtnhmcp.player.PlayerModule
 dev.gtnhmcp.quest.QuestModule
+dev.gtnhmcp.vein.VeinModule
+dev.gtnhmcp.world.WorldModule

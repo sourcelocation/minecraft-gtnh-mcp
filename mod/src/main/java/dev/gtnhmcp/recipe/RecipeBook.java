@@ -30,12 +30,23 @@ final class RecipeBook {
         }
     };
 
-    Stream<RecipeHandlerRef> producing(ItemStack stack) {
-        return distinct(GuiCraftingRecipe.getCraftingHandlers("item", query(stack)));
+    /** NEI's tabs for recipes making the item, or using it. */
+    List<? extends IRecipeHandler> handlers(ItemStack stack, boolean uses) {
+        return uses ? GuiUsageRecipe.getUsageHandlers("item", query(stack))
+            : GuiCraftingRecipe.getCraftingHandlers("item", query(stack));
     }
 
-    Stream<RecipeHandlerRef> consuming(ItemStack stack) {
-        return distinct(GuiUsageRecipe.getUsageHandlers("item", query(stack)));
+    /** The tabs' recipes, lazily, each recipe once. */
+    Stream<RecipeHandlerRef> recipes(List<? extends IRecipeHandler> handlers) {
+        Set<RecipeId> seen = new HashSet<>();
+        return handlers.stream()
+            .flatMap(
+                h -> IntStream.range(0, h.numRecipes())
+                    .mapToObj(i -> RecipeHandlerRef.of(h, i)))
+            .filter(ref -> {
+                RecipeId id = RecipeId.of(ref.handler, ref.recipeIndex);
+                return id != null && seen.add(id);
+            });
     }
 
     String handle(Recipe recipe) {
@@ -55,18 +66,6 @@ final class RecipeBook {
         if (ref == null)
             throw new ToolException("Unknown recipe id '" + handle + "'; look it up again with find_recipes");
         return ref;
-    }
-
-    private static Stream<RecipeHandlerRef> distinct(List<? extends IRecipeHandler> handlers) {
-        Set<RecipeId> seen = new HashSet<>();
-        return handlers.stream()
-            .flatMap(
-                h -> IntStream.range(0, h.numRecipes())
-                    .mapToObj(i -> RecipeHandlerRef.of(h, i)))
-            .filter(ref -> {
-                RecipeId id = RecipeId.of(ref.handler, ref.recipeIndex);
-                return id != null && seen.add(id);
-            });
     }
 
     private static ItemStack query(ItemStack stack) {

@@ -1,22 +1,30 @@
 # Agent notes
 
-Forge 1.7.10 client mod in `mod/` (Java 17, GTNHGradle). It serves stateless Streamable HTTP MCP on `127.0.0.1:8765/mcp` using the official Java SDK and Jetty, both shaded.
+Forge 1.7.10 client mod in `mod/` (Java 17, GTNHGradle). It serves stateless Streamable HTTP MCP on `127.0.0.1:<port>/mcp` using the official Java SDK and Jetty, both shaded. GTNHLib (config, client command) and ModularUI2 (debug screen) come from the pack.
 
 ## Rules
 
-- Read-only, loopback-only. Never add tools that change game state.
-- Every tool call runs on the client thread (`ClientThread`); never read game state elsewhere.
-- Output must stay token-lean: data fields only, nulls and empties omitted, short descriptions.
-- Prefer the mods' APIs (NEI `StackInfo`, `SearchField`, `RecipeHandlerRef`; BetterQuesting `QuestingAPI`, `QuestTranslation`; GT `GTValues`) over hand-written logic.
+- Loopback-only, and never change the game. Tools may only write this mod's own notes (region labels) and must say so with `Tool.access()`.
+- Every tool call goes through `ToolCatalog`, which runs it on the client thread. Never read game state elsewhere.
+- Tools return plain records of facts (`Item`, `Stack`, `RecipeView.Ingredient`, ...), never formatted text. How output reads (labels, omitted nulls and empties, schemas) lives only in `dev.gtnhmcp.output`, so format changes touch nothing else.
+- Output must stay token-lean: data fields only, items as game-style labels like `24× Torch [minecraft:torch]`, short descriptions. Check sizes with `/mcp debug`.
+- Prefer the mods' APIs (NEI `StackInfo`, `SearchField`, `RecipeHandlerRef`; BetterQuesting `QuestingAPI`, `QuestTranslation`; GT `GTValues`; GTNHLib config and commands; ModularUI2) over hand-written logic.
+- Keep GUI code in views; state and behaviour go in GUI-free models (`ToolConsole` for `DebugScreen`).
+- Conventional Commits; release-please versions and releases from them.
 
 ## Extending (open/closed)
 
-- New data source: implement `ToolModule`, write tools as `AbstractTool<In, Out>` with record I/O (schemas are generated from the records), and list the module in `META-INF/services/dev.gtnhmcp.core.ToolModule`. Gate optional mods with `available()` and keep their classes out of the module class itself.
+- New data source: implement `ToolModule`, write tools as `AbstractTool<In, Out>` with record I/O (schemas and the debug screen's argument template come from the records), and list the module in `META-INF/services/dev.gtnhmcp.core.ToolModule`. Gate optional mods with `available()` and keep their classes out of the module class itself.
 - New recipe facts: implement `RecipeDetail` and list it in `META-INF/services/dev.gtnhmcp.recipe.RecipeDetail`.
+- Another kind of recycling: implement `RecyclingRule` and list it in `META-INF/services/dev.gtnhmcp.recipe.RecyclingRule`. Base rules on the mods' own data (GT recipe categories, `OrePrefixes.isRecyclable()`), never item lists.
+- A tab to show only as a count: add its NEI handler id to `RecipeSources.COLLAPSED`.
+- Naming a kind of block (a machine, a storage block): implement `BlockDescriber` and list it in `META-INF/services/dev.gtnhmcp.world.BlockDescriber`.
 - Planning policy: implement `PlanPolicy`.
+- A value that should read as one string: extend `output.Label` (a Jackson serializer that also describes its schema) and add it in `OutputFormat`.
+- New `/mcp` action: implement `Subcommand` and add it in `GtnhMcp`.
 
 Do not edit existing modules to add a source.
 
 ## Verify
 
-`./gradlew build`, then `./gradlew runClient17`, join a world, and call the tools over HTTP.
+`./gradlew build`, then `./gradlew runClient17` (or `install` into a real instance), join a world, and use `/mcp debug` or call the tools over HTTP.

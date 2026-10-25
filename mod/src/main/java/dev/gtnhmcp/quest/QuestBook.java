@@ -5,21 +5,37 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraftforge.fluids.FluidStack;
 
 import betterquesting.api.api.ApiReference;
 import betterquesting.api.api.QuestingAPI;
 import betterquesting.api.questing.IQuest;
 import betterquesting.api.questing.IQuestLine;
+import betterquesting.api.questing.tasks.ITask;
+import betterquesting.api.utils.BigItemStack;
+import betterquesting.api2.storage.DBEntry;
 import betterquesting.api2.utils.QuestTranslation;
+import bq_standard.tasks.ITaskItemInput;
+import bq_standard.tasks.TaskFluid;
+import dev.gtnhmcp.core.Item;
+import dev.gtnhmcp.core.Items;
+import dev.gtnhmcp.core.Stack;
 import dev.gtnhmcp.core.Text;
 import dev.gtnhmcp.core.ToolException;
 
 /** Read access to BetterQuesting through its public API, with translated names. */
 final class QuestBook {
+
+    private final Items items;
+
+    QuestBook(Items items) {
+        this.items = items;
+    }
 
     Stream<Map.Entry<UUID, IQuest>> quests() {
         return QuestingAPI.getAPI(ApiReference.QUEST_DB)
@@ -59,5 +75,30 @@ final class QuestBook {
         return quest.getState(player)
             .name()
             .toLowerCase(Locale.ROOT);
+    }
+
+    /** What the quest's tasks ask for: items to retrieve or craft, and fluids. Other tasks (kills, places) add none. */
+    List<Stack> needs(IQuest quest) {
+        List<Stack> needs = new ArrayList<>();
+        for (DBEntry<ITask> entry : quest.getTasks()
+            .getEntries()) {
+            ITask task = entry.getValue();
+            if (task instanceof ITaskItemInput input) for (BigItemStack item : input.getItemInputs())
+                needs.add(items.stack(item.getBaseStack(), item.stackSize));
+            if (task instanceof TaskFluid fluids)
+                for (FluidStack fluid : fluids.requiredFluids) fluid(fluid).ifPresent(needs::add);
+        }
+        return needs;
+    }
+
+    /** Empty for a fluid NEI has no display item for. */
+    private Optional<Stack> fluid(FluidStack fluid) {
+        try {
+            String id = Item.FLUID + fluid.getFluid()
+                .getName();
+            return Optional.of(items.stack(items.resolve(id), fluid.amount));
+        } catch (ToolException unknown) {
+            return Optional.empty();
+        }
     }
 }

@@ -1,0 +1,21 @@
+version: 2
+
+updates:
+  - package-ecosystem: gradle
+    directory: /mod
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      gradle: { update-types: [minor, patch] }
+    # The GTNH mods are pinned to the pack release we target; bump them with the pack.
+    ignore:
+      - dependency-name: "com.github.GTNewHorizons:*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly, day: monday }
+    cooldown: { default-days: 7 }
+    commit-message: { prefix: build, include: scope }
+    groups:
+      actions: { update-types: [minor, patch] }

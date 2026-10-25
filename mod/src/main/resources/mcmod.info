@@ -1,11 +1,13 @@
 [{
   "modid": "${modId}",
   "name": "${modName}",
-  "description": "Read-only MCP server exposing your GT New Horizons game to AI clients on 127.0.0.1:8765/mcp.",
+  "description": "Lets AI assistants read your GT New Horizons game: NEI recipes and recipe chains, your inventory, and BetterQuesting progress.\n\nRuns a read-only MCP server on this computer only (127.0.0.1:8765/mcp). Type /mcp in chat for status and setup.",
   "version": "${modVersion}",
   "mcversion": "${minecraftVersion}",
   "url": "https://github.com/sourcelocation/minecraft-gtnh-mcp",
   "authorList": ["sourcelocation"],
-  "requiredMods": ["NotEnoughItems", "gregtech"],
+  "credits": "Built on NotEnoughItems, GregTech, BetterQuesting and the Model Context Protocol Java SDK.",
+  "logoFile": "assets/gtnhmcp/logo.png",
+  "requiredMods": ["NotEnoughItems", "gregtech", "gtnhlib", "modularui2"],
   "dependencies": ["after:betterquesting"]
 }]

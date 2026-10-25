@@ -7,13 +7,15 @@ import java.lang.reflect.Type;
 public abstract class AbstractTool<I, O> implements Tool<I, O> {
 
     private final String name;
+    private final String title;
     private final String description;
     private final Type input;
     private final Type output;
 
-    protected AbstractTool(String name, String description) {
+    protected AbstractTool(String name, String title, String description) {
         Type[] types = ((ParameterizedType) getClass().getGenericSuperclass()).getActualTypeArguments();
         this.name = name;
+        this.title = title;
         this.description = description;
         this.input = types[0];
         this.output = types[1];
@@ -21,6 +23,10 @@ public abstract class AbstractTool<I, O> implements Tool<I, O> {
 
     public final String name() {
         return name;
+    }
+
+    public final String title() {
+        return title;
     }
 
     public final String description() {

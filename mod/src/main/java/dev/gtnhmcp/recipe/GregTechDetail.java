@@ -15,10 +15,11 @@ public final class GregTechDetail implements RecipeDetail {
         return Loader.isModLoaded("gregtech");
     }
 
+    /** The index refers to this lookup's results ({@code arecipes}), not GT's cache of the whole recipe map. */
     public void describe(RecipeHandlerRef ref, Map<String, Object> info) {
         if (!(ref.handler instanceof GTNEIDefaultHandler handler)) return;
-        GTRecipe recipe = handler.getCache()
-            .get(ref.recipeIndex).mRecipe;
+        if (!(handler.arecipes.get(ref.recipeIndex) instanceof GTNEIDefaultHandler.CachedDefaultRecipe cached)) return;
+        GTRecipe recipe = cached.mRecipe;
         info.put("eut", recipe.mEUt);
         info.put("ticks", recipe.mDuration);
         info.put("tier", GTValues.VN[GTUtility.getTier(Math.abs((long) recipe.mEUt))]);

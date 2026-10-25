@@ -1,5 +1,8 @@
 package dev.gtnhmcp.server;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Base64;
 import java.util.List;
 
 import org.eclipse.jetty.ee11.servlet.ServletContextHandler;
@@ -21,13 +24,13 @@ import tools.jackson.databind.json.JsonMapper;
 /** Stateless Streamable HTTP on loopback only; the Host check blocks DNS rebinding. */
 final class McpHttpServer implements AutoCloseable {
 
-    static final int PORT = 8765;
     static final String PATH = "/mcp";
     private static final String INSTRUCTIONS = "Live data from the player's GT New Horizons client. Item ids from any tool are accepted by every tool; recipe ids last until the game restarts.";
+    private static final String WEBSITE = "https://github.com/sourcelocation/minecraft-gtnh-mcp";
 
     private final Server jetty;
 
-    McpHttpServer(String version, List<SyncToolSpecification> tools) throws Exception {
+    McpHttpServer(String version, int port, List<SyncToolSpecification> tools) throws Exception {
         JsonMapper mapper = JsonMapper.builder()
             .build();
         McpJsonMapper json = new JacksonMcpJsonMapper(mapper);
@@ -41,7 +44,12 @@ final class McpHttpServer implements AutoCloseable {
                     .build())
             .build();
         McpServer.sync(transport)
-            .serverInfo("gtnh-mcp", version)
+            .serverInfo(
+                McpSchema.Implementation.builder("gtnh-mcp", version)
+                    .title("GTNH MCP")
+                    .websiteUrl(WEBSITE)
+                    .icons(icon())
+                    .build())
             .instructions(INSTRUCTIONS)
             .capabilities(
                 McpSchema.ServerCapabilities.builder()
@@ -55,15 +63,34 @@ final class McpHttpServer implements AutoCloseable {
         jetty = new Server(new QueuedThreadPool(8, 2));
         ServerConnector connector = new ServerConnector(jetty);
         connector.setHost("127.0.0.1");
-        connector.setPort(PORT);
+        connector.setPort(port);
         jetty.addConnector(connector);
         ServletContextHandler context = new ServletContextHandler();
         context.addServlet(new ServletHolder(transport), PATH);
         jetty.setHandler(context);
-        jetty.start();
+        try {
+            jetty.start();
+        } catch (Exception e) {
+            jetty.stop();
+            throw e;
+        }
     }
 
     public void close() throws Exception {
         jetty.stop();
+    }
+
+    /** The mod icon as a data URI, which clients show next to the server. */
+    private static List<McpSchema.Icon> icon() throws IOException {
+        try (InputStream png = McpHttpServer.class.getResourceAsStream("/assets/gtnhmcp/icon.png")) {
+            if (png == null) return List.of();
+            String uri = "data:image/png;base64," + Base64.getEncoder()
+                .encodeToString(png.readAllBytes());
+            return List.of(
+                McpSchema.Icon.builder(uri)
+                    .mimeType("image/png")
+                    .sizes(List.of("128x128"))
+                    .build());
+        }
     }
 }
