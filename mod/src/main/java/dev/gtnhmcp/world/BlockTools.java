@@ -21,7 +21,7 @@ final class BlockTools {
         @JsonPropertyDescription("opposite corner [x, y, z]") List<Integer> to) {}
 
     public record Search(@JsonProperty(
-        required = true) @JsonPropertyDescription("text in the block name, e.g. 'blast furnace', 'drawer', 'running'") String query,
+        required = true) @JsonPropertyDescription("text in the block name, e.g. 'blast furnace', 'sodium'") String query,
         @JsonPropertyDescription("blocks around the player, default 32, max 64") Integer radius,
         @JsonPropertyDescription("corner [x, y, z]; with to, used instead of radius") List<Integer> from,
         @JsonPropertyDescription("opposite corner [x, y, z]") List<Integer> to) {}
@@ -38,8 +38,8 @@ final class BlockTools {
             super(
                 "get_blocks",
                 "Blocks around",
-                "Every non-air block in an area, grouped by name: GregTech machines by machine (with '(running)'), "
-                    + "drawers by contents. Use it to see what a production line is.");
+                "Every non-air block in an area, grouped by the item each block gives (machines by machine), with "
+                    + "the inventory contents the client can see. Use it to see what a production line is.");
             this.game = game;
             this.scanner = scanner;
         }

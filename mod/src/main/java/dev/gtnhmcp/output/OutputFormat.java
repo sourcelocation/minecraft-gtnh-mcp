@@ -23,11 +23,14 @@ import tools.jackson.databind.module.SimpleModule;
 
 /**
  * How tool output reads. Tools return plain records; this alone decides their JSON and schemas: {@link Label}led types
- * become one string, and nulls and empty values are omitted to save tokens. The SDK keeps its own, standard mapper.
+ * become one string, and nulls, empty values and false flags are omitted to save tokens (a missing flag means false).
+ * The SDK keeps its own, standard mapper.
  */
 public final class OutputFormat {
 
     private static final TypeReference<Map<String, Object>> MAP = new TypeReference<>() {};
+    private static final JsonInclude.Value FALSE_OMITTED = JsonInclude.Value
+        .construct(JsonInclude.Include.NON_DEFAULT, JsonInclude.Include.NON_DEFAULT);
 
     private final List<Label<?>> labels;
     private final JsonMapper mapper;
@@ -43,6 +46,8 @@ public final class OutputFormat {
             .changeDefaultPropertyInclusion(
                 inclusion -> inclusion.withValueInclusion(JsonInclude.Include.NON_EMPTY)
                     .withContentInclusion(JsonInclude.Include.NON_EMPTY))
+            .withConfigOverride(boolean.class, flag -> flag.setInclude(FALSE_OMITTED))
+            .withConfigOverride(Boolean.class, flag -> flag.setInclude(FALSE_OMITTED))
             .addModule(module)
             .build();
         SchemaGeneratorConfigBuilder config = new SchemaGeneratorConfigBuilder(

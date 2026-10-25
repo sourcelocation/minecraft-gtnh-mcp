@@ -17,8 +17,8 @@ final class StackLabel extends Label<Stack> {
     }
 
     public String render(Stack stack) {
-        String count = stack.item()
-            .fluid() ? stack.amount() + " mB " : stack.amount() == 1 ? "" : stack.amount() + "× ";
-        return count + item.render(stack.item());
+        return stack.item()
+            .unit()
+            .count(stack.amount()) + item.render(stack.item());
     }
 }

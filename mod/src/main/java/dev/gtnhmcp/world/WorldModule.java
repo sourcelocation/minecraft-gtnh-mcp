@@ -2,7 +2,6 @@ package dev.gtnhmcp.world;
 
 import java.util.List;
 
-import dev.gtnhmcp.core.Extension;
 import dev.gtnhmcp.core.Game;
 import dev.gtnhmcp.core.Tool;
 import dev.gtnhmcp.core.ToolModule;
@@ -11,7 +10,7 @@ import dev.gtnhmcp.core.ToolModule;
 public final class WorldModule implements ToolModule {
 
     public List<Tool<?, ?>> tools(Game game) {
-        BlockScanner scanner = new BlockScanner(new BlockNames(Extension.load(BlockDescriber.class), game.items()));
+        BlockScanner scanner = new BlockScanner(new BlockNames(game.items()));
         RegionStore regions = new RegionStore();
         return List.of(
             new BlockTools.GetBlocks(game, scanner),

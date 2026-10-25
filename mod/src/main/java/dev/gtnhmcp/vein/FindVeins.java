@@ -25,7 +25,7 @@ final class FindVeins extends AbstractTool<FindVeins.Search, Page<FindVeins.Vein
 
     public record Vein(String name, List<String> ores, int dim, int x, int z,
         @JsonPropertyDescription("blocks from the player; only in the player's dimension") Integer distance,
-        Boolean depleted) {}
+        boolean depleted) {}
 
     private final Game game;
 
@@ -65,7 +65,7 @@ final class FindVeins extends AbstractTool<FindVeins.Search, Page<FindVeins.Vein
             position.getBlockX(),
             position.getBlockZ(),
             distance,
-            position.isDepleted() ? Boolean.TRUE : null);
+            position.isDepleted());
     }
 
     private static boolean matches(Vein vein, String query) {

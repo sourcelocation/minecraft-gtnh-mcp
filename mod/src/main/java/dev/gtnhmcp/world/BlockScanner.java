@@ -22,7 +22,7 @@ final class BlockScanner {
 
     /** Groups ordered rarest first, so machines come before casings and stone. */
     public record Scan(Map<String, Group> blocks,
-        @JsonPropertyDescription("true when part of the area is in unloaded chunks and was skipped") Boolean partial) {}
+        @JsonPropertyDescription("true when part of the area is in unloaded chunks and was skipped") boolean partial) {}
 
     private final BlockNames names;
 
@@ -57,7 +57,7 @@ final class BlockScanner {
                     e.getKey(),
                     e.getValue()
                         .group()));
-        return new Scan(ordered, partial ? Boolean.TRUE : null);
+        return new Scan(ordered, partial);
     }
 
     private static final class Collector {

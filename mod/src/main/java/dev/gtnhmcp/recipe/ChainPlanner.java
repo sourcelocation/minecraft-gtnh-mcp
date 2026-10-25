@@ -94,7 +94,7 @@ final class ChainPlanner {
                 for (RecipeIngredient out : chosen.recipe()
                     .getResults()) {
                     ItemStack stack = out.contains(wanted) ? wanted : policy.pick(out);
-                    if (stack != null) add(stack, out.getAmount() * chance(out) * n);
+                    if (stack != null) add(stack, out.getAmount() * RecipeRenderer.chance(out) * n);
                 }
                 for (RecipeIngredient in : chosen.recipe()
                     .getIngredients()) {
@@ -127,13 +127,8 @@ final class ChainPlanner {
             return recipe.getResults()
                 .stream()
                 .filter(out -> out.contains(wanted))
-                .mapToDouble(out -> out.getAmount() * chance(out))
+                .mapToDouble(out -> out.getAmount() * RecipeRenderer.chance(out))
                 .sum();
-        }
-
-        private double chance(RecipeIngredient ingredient) {
-            Double chance = RecipeRenderer.chance(ingredient);
-            return chance == null ? 1 : chance;
         }
     }
 }

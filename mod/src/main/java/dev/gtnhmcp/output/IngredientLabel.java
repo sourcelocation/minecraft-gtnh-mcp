@@ -18,18 +18,19 @@ final class IngredientLabel extends Label<Ingredient> {
         return "a stack, then ' <p>%' when chanced, ' any of <n>' when other items also fit, ' kept' when not consumed";
     }
 
+    /** Notes that state the usual case (certain, one item fits, consumed) are left out. */
     public String render(Ingredient ingredient) {
         StringBuilder label = new StringBuilder(stack.render(ingredient.stack()));
-        if (ingredient.chance() != null) label.append(' ')
+        if (ingredient.chance() < 1) label.append(' ')
             .append(
                 BigDecimal.valueOf(ingredient.chance())
                     .movePointRight(2)
                     .stripTrailingZeros()
                     .toPlainString())
             .append('%');
-        if (ingredient.alts() != null) label.append(" any of ")
+        if (ingredient.alts() > 1) label.append(" any of ")
             .append(ingredient.alts());
-        if (Boolean.TRUE.equals(ingredient.kept())) label.append(" kept");
+        if (ingredient.kept()) label.append(" kept");
         return label.toString();
     }
 }

@@ -26,7 +26,7 @@ public final class RecipeModule implements ToolModule {
 
     public List<Tool<?, ?>> tools(Game game) {
         RecipeBook book = new RecipeBook();
-        RecipeSearch search = new RecipeSearch(book, new RecipeSources(Extension.load(RecyclingRule.class)));
+        RecipeSearch search = new RecipeSearch(book, new RecipeSources());
         RecipeRenderer renderer = new RecipeRenderer(game.items(), book, Extension.load(RecipeDetail.class));
         ChainPlanner planner = new ChainPlanner(game.items(), search, renderer);
         return List.of(

@@ -59,17 +59,17 @@ final class RecipeRenderer {
     private RecipeView.Ingredient ingredient(RecipeIngredient ingredient) {
         ItemStack stack = ingredient.getItemStack();
         boolean kept = ingredient.getAmount() <= 0;
-        int alts = ingredient.getPermutations()
-            .size();
         return new RecipeView.Ingredient(
             items.stack(stack, kept ? Math.max(1, stack.stackSize) : ingredient.getAmount()),
             chance(ingredient),
-            alts > 1 ? alts : null,
-            kept ? Boolean.TRUE : null);
+            ingredient.getPermutations()
+                .size(),
+            kept);
     }
 
-    static Double chance(RecipeIngredient ingredient) {
+    /** NEI gives chances in hundredths of a percent, with 0 meaning certain. */
+    static double chance(RecipeIngredient ingredient) {
         int chance = ingredient.getChance();
-        return chance > 0 && chance < 10000 ? chance / 10000.0 : null;
+        return chance > 0 && chance < 10000 ? chance / 10000.0 : 1;
     }
 }
