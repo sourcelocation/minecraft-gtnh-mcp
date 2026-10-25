@@ -3,6 +3,7 @@ package dev.gtnhmcp.core;
 import java.util.List;
 
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.FluidStack;
 
 /** Stable item and fluid identity shared by every tool. */
 public interface Items {
@@ -14,6 +15,9 @@ public interface Items {
     ItemStack resolve(String idOrQuery);
 
     Item item(ItemStack stack);
+
+    /** A fluid amount as recipes show it; throws {@link ToolException} for a fluid NEI cannot show. */
+    Stack fluid(FluidStack fluid);
 
     /** Localized name without formatting codes. */
     String name(ItemStack stack);

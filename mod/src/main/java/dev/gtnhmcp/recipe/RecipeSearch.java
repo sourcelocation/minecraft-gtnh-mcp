@@ -36,10 +36,10 @@ final class RecipeSearch {
             String name = RecipeSources.machine(handler);
             if (machine != null) {
                 if (name.equalsIgnoreCase(machine)) listed.add(handler);
-            } else if (!recycled && sources.recycling(handler)) continue;
-            else if (sources.collapsed(handler)) collapsed.merge(name, handler.numRecipes(), Integer::sum);
+            } else if (sources.collapsed(handler)) collapsed.merge(name, handler.numRecipes(), Integer::sum);
             else listed.add(handler);
         }
-        return new Result(book.recipes(listed), collapsed);
+        Stream<RecipeHandlerRef> recipes = book.recipes(listed);
+        return new Result(recycled ? recipes : recipes.filter(recipe -> !sources.recycling(recipe)), collapsed);
     }
 }

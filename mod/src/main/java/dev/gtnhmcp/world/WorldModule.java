@@ -10,11 +10,12 @@ import dev.gtnhmcp.core.ToolModule;
 public final class WorldModule implements ToolModule {
 
     public List<Tool<?, ?>> tools(Game game) {
-        BlockScanner scanner = new BlockScanner(new BlockNames(game.items()));
+        LoadedBlocks blocks = new LoadedBlocks(new BlockNames(game.items()));
+        List<BlockDetail> details = List.of(new InventoryDetail(game.items()), new FluidDetail(game.items()));
         RegionStore regions = new RegionStore();
         return List.of(
-            new BlockTools.GetBlocks(game, scanner),
-            new BlockTools.FindBlocks(game, scanner),
+            new BlockTools.GetBlocks(game, blocks, details),
+            new BlockTools.FindBlocks(game, blocks, details),
             new RegionTools.LabelRegion(game, regions),
             new RegionTools.DeleteRegion(regions),
             new RegionTools.ListRegions(game, regions));

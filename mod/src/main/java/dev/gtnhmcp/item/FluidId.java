@@ -15,13 +15,17 @@ final class FluidId implements IdFormat {
     }
 
     public NBTTagCompound decode(String id) {
-        if (!id.startsWith(PREFIX)) return null;
-        NBTTagCompound nbt = new NBTTagCompound();
-        nbt.setString(KEY, id.substring(PREFIX.length()));
-        return nbt;
+        return id.startsWith(PREFIX) ? nbt(id.substring(PREFIX.length())) : null;
     }
 
     public Unit unit() {
         return Unit.MILLIBUCKETS;
+    }
+
+    /** NEI's NBT for a fluid's display stack, by the fluid's registry name. */
+    NBTTagCompound nbt(String fluidName) {
+        NBTTagCompound nbt = new NBTTagCompound();
+        nbt.setString(KEY, fluidName);
+        return nbt;
     }
 }

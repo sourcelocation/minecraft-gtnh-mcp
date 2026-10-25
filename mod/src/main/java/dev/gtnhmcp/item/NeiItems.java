@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraftforge.fluids.FluidStack;
 
 import codechicken.nei.ItemList;
 import codechicken.nei.SearchField;
@@ -16,6 +17,7 @@ import codechicken.nei.api.ItemFilter;
 import codechicken.nei.recipe.StackInfo;
 import dev.gtnhmcp.core.Item;
 import dev.gtnhmcp.core.Items;
+import dev.gtnhmcp.core.Stack;
 import dev.gtnhmcp.core.ToolException;
 
 /**
@@ -29,7 +31,8 @@ public final class NeiItems implements Items {
 
     private static final int MAX_ID = 96;
 
-    private final List<IdFormat> formats = List.of(new FluidId(), new RegistryId(), new NbtId());
+    private final FluidId fluids = new FluidId();
+    private final List<IdFormat> formats = List.of(fluids, new RegistryId(), new NbtId());
 
     public String id(ItemStack stack) {
         NBTTagCompound nbt = nbt(stack);
@@ -40,6 +43,15 @@ public final class NeiItems implements Items {
         NBTTagCompound nbt = nbt(stack);
         IdFormat format = format(nbt);
         return new Item(format.encode(nbt), name(stack), format.unit());
+    }
+
+    public Stack fluid(FluidStack fluid) {
+        ItemStack display = load(
+            fluids.nbt(
+                fluid.getFluid()
+                    .getName()));
+        if (display == null) throw new ToolException("NEI has no display for fluid " + fluid.getLocalizedName());
+        return stack(display, fluid.amount);
     }
 
     public ItemStack resolve(String idOrQuery) {

@@ -17,8 +17,10 @@ Forge 1.7.10 client mod in `mod/` (Java 17, GTNHGradle). It serves stateless Str
 
 - New data source: implement `ToolModule`, write tools as `AbstractTool<In, Out>` with record I/O (schemas and the debug screen's argument template come from the records), and list the module in `META-INF/services/dev.gtnhmcp.core.ToolModule`. Gate optional mods with `available()` and keep their classes out of the module class itself.
 - New recipe facts: implement `RecipeDetail` and list it in `META-INF/services/dev.gtnhmcp.recipe.RecipeDetail`.
-- A tab to show only as a count: add its NEI handler id to `RecipeSources.COLLAPSED`. Recycling tabs are recognised by name.
+- A tab to show only as a count: add its NEI handler id to `RecipeSources.COLLAPSED`.
+- Another kind of recycling: implement `RecyclingRule` and add it in `RecipeModule`. Today: whole tabs named "… Recycling" (`RecyclingTab`), and part-to-raw reversals elsewhere by GregTech's recyclable-part flag (`PartReversal`).
 - Another id syntax: implement `item.IdFormat` and add it to `NeiItems`' list.
+- Another per-block detail (through a generic interface): implement `world.BlockDetail` and add it in `WorldModule`. Another view of an area: implement `world.BlockSink`.
 - Planning policy: implement `PlanPolicy`.
 - A value that should read as one string: extend `output.Label` (a Jackson serializer that also describes its schema) and add it in `OutputFormat`.
 - New `/mcp` action: implement `Subcommand` and add it in `GtnhMcp`.

@@ -1,9 +1,10 @@
 package dev.gtnhmcp.recipe;
 
-import java.util.Locale;
+import java.util.List;
 import java.util.Set;
 
 import codechicken.nei.recipe.IRecipeHandler;
+import codechicken.nei.recipe.RecipeHandlerRef;
 import dev.gtnhmcp.core.Text;
 
 /** Which NEI tabs are listed in full, which only as a count, and which are recycling. */
@@ -23,15 +24,20 @@ final class RecipeSources {
         "gt.recipe.multidehydrator",
         "etfuturum.blastfurnace");
 
+    private final List<RecyclingRule> recycling;
+
+    RecipeSources(List<RecyclingRule> recycling) {
+        this.recycling = List.copyOf(recycling);
+    }
+
     boolean collapsed(IRecipeHandler handler) {
         String id = id(handler);
         return id != null && COLLAPSED.contains(id);
     }
 
-    /** Tabs that turn parts back into raw material say so in their name, e.g. GregTech's "Macerator Recycling". */
-    boolean recycling(IRecipeHandler handler) {
-        return machine(handler).toLowerCase(Locale.ROOT)
-            .contains("recycling");
+    boolean recycling(RecipeHandlerRef recipe) {
+        return recycling.stream()
+            .anyMatch(rule -> rule.recycles(recipe));
     }
 
     /** The tab's name, as {@code machine} in every recipe. */
