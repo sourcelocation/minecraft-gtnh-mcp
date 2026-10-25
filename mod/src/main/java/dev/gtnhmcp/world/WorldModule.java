@@ -11,10 +11,13 @@ public final class WorldModule implements ToolModule {
 
     public List<Tool<?, ?>> tools(Game game) {
         LoadedBlocks blocks = new LoadedBlocks(new BlockNames(game.items()));
-        List<BlockDetail> details = List.of(new InventoryDetail(game.items()), new FluidDetail(game.items()));
+        BlockTools.Details details = new BlockTools.Details(
+            List.of(new InventoryDetail(game.items()), new FluidDetail(game.items())),
+            new Neighbours(blocks));
         RegionStore regions = new RegionStore();
         return List.of(
             new BlockTools.GetBlocks(game, blocks, details),
+            new BlockTools.GetBlock(game, blocks, details),
             new BlockTools.FindBlocks(game, blocks, details),
             new RegionTools.LabelRegion(game, regions),
             new RegionTools.DeleteRegion(regions),

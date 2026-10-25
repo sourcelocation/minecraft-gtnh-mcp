@@ -22,8 +22,9 @@ Needs GTNH on Java 17+. Download the jar from [Releases](https://github.com/sour
 | `plan_chain` | Recipe chain from targets to raw materials |
 | `get_player` | Position and inventory |
 | `get_slot` | One slot's tooltip, ore names, NBT |
-| `get_blocks` | Blocks around you grouped by name; `expand` lists chosen ones with position, inventory and fluids |
-| `find_blocks` | Every matching block in a larger area, with position, inventory and fluids |
+| `get_blocks` | Blocks around you grouped by name; `expand` lists the named ones with position, inventory, fluids and neighbours |
+| `get_block` | One block with inventory, fluids and neighbours |
+| `find_blocks` | Every matching block in a larger area, the same way |
 | `label_region`, `list_regions`, `delete_region` | Named areas, e.g. production lines, kept per world |
 | `find_veins` | Prospected ore veins, nearest first (with VisualProspecting) |
 | `find_quests`, `get_quest` | Quests by what they say or ask for, with progress (with BetterQuesting) |

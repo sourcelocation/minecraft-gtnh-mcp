@@ -20,12 +20,12 @@ final class InventoryDetail implements BlockDetail {
     }
 
     public void describe(BlockAt block, Map<String, Object> details) {
-        if (!(block.tile() instanceof IInventory inventory)) return;
+        if (!(block.tile() instanceof IInventory inventory) || inventory.getSizeInventory() == 0) return;
         List<Stack> stacks = new ArrayList<>();
         for (int slot = 0; slot < inventory.getSizeInventory(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (stack != null && stack.getItem() != null) stacks.add(items.stack(stack, stack.stackSize));
         }
-        details.put("inventory", stacks);
+        details.put("inventory", stacks.isEmpty() ? NONE_VISIBLE : stacks);
     }
 }

@@ -24,7 +24,7 @@ final class FluidDetail implements BlockDetail {
     public void describe(BlockAt block, Map<String, Object> details) {
         if (!(block.tile() instanceof IFluidHandler handler)) return;
         FluidTankInfo[] tanks = handler.getTankInfo(ForgeDirection.UNKNOWN);
-        if (tanks == null) return;
+        if (tanks == null || tanks.length == 0) return;
         List<Stack> fluids = new ArrayList<>();
         for (FluidTankInfo tank : tanks) {
             if (tank == null || tank.fluid == null || tank.fluid.amount <= 0) continue;
@@ -34,6 +34,6 @@ final class FluidDetail implements BlockDetail {
                 // A fluid NEI cannot show is left out rather than failing the whole listing.
             }
         }
-        details.put("fluids", fluids);
+        details.put("fluids", fluids.isEmpty() ? NONE_VISIBLE : fluids);
     }
 }

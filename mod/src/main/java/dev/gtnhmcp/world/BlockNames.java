@@ -23,13 +23,13 @@ final class BlockNames {
         this.items = items;
     }
 
-    String name(World world, BlockAt at) {
-        if (at.tile() != null) return pickName(world, at);
-        return plain
-            .computeIfAbsent(((long) Block.getIdFromBlock(at.block()) << 32) | at.meta(), key -> pickName(world, at));
+    String name(BlockAt at) {
+        if (at.tile() != null) return pickName(at);
+        return plain.computeIfAbsent(((long) Block.getIdFromBlock(at.block()) << 32) | at.meta(), key -> pickName(at));
     }
 
-    private String pickName(World world, BlockAt at) {
+    private String pickName(BlockAt at) {
+        World world = at.world();
         try {
             MovingObjectPosition target = new MovingObjectPosition(
                 at.x(),
