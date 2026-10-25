@@ -12,31 +12,31 @@ import dev.gtnhmcp.core.AbstractTool;
 import dev.gtnhmcp.core.Game;
 import dev.gtnhmcp.core.ToolException;
 
-/** Named regions: labels for production lines and areas, kept per world by this mod. */
+/** Noted regions: what production lines and areas are for, kept per world by this mod. */
 final class RegionTools {
 
     private RegionTools() {}
 
     public record Label(@JsonProperty(
-        required = true) @JsonPropertyDescription("e.g. 'polyethylene line'; replaces a region of the same name") String name,
+        required = true) @JsonPropertyDescription("what it is and how it works, e.g. 'PE line — ethylene + O2 → polyethylene'; replaces a region with the same note") String note,
         @JsonPropertyDescription("blocks around the player, default 5") Integer radius,
         @JsonPropertyDescription("corner [x, y, z]; with to, used instead of radius") List<Integer> from,
         @JsonPropertyDescription("opposite corner [x, y, z]") List<Integer> to) {}
 
-    public record Name(@JsonProperty(required = true) String name) {}
+    public record Note(@JsonProperty(required = true) String note) {}
 
     public record Nearby(@JsonPropertyDescription("blocks from the player, default 200") Integer radius,
         @JsonPropertyDescription("corner [x, y, z]; with to, regions overlapping this box instead") List<Integer> from,
         @JsonPropertyDescription("opposite corner [x, y, z]") List<Integer> to) {}
 
-    public record RegionView(String name, int dim, @JsonPropertyDescription("x1,y1,z1..x2,y2,z2") String area,
+    public record RegionView(String note, int dim, @JsonPropertyDescription("x1,y1,z1..x2,y2,z2") String area,
         @JsonPropertyDescription("blocks from the player, in the same dimension") Integer distance) {}
 
     public record Regions(List<RegionView> regions) {}
 
     static RegionView view(RegionStore.Region region, EntityPlayer player) {
         return new RegionView(
-            region.name(),
+            region.note(),
             region.box()
                 .dim(),
             region.box()
@@ -51,7 +51,10 @@ final class RegionTools {
         private final RegionStore regions;
 
         LabelRegion(Game game, RegionStore regions) {
-            super("label_region", "Label region", "Name an area, e.g. a production line, so later sessions know it.");
+            super(
+                "label_region",
+                "Label region",
+                "Note what an area is, e.g. a production line and how it works, so later sessions know it.");
             this.game = game;
             this.regions = regions;
         }
@@ -61,11 +64,11 @@ final class RegionTools {
         }
 
         public RegionView call(Label label) {
-            if (label.name()
-                .isBlank()) throw new ToolException("name required");
+            if (label.note()
+                .isBlank()) throw new ToolException("note required");
             EntityPlayer player = game.player();
             RegionStore.Region region = new RegionStore.Region(
-                label.name()
+                label.note()
                     .trim(),
                 Box.of(player, label.radius(), label.from(), label.to(), 5));
             regions.put(region);
@@ -75,12 +78,12 @@ final class RegionTools {
 
     public record Deleted(String deleted) {}
 
-    static final class DeleteRegion extends AbstractTool<Name, Deleted> {
+    static final class DeleteRegion extends AbstractTool<Note, Deleted> {
 
         private final RegionStore regions;
 
         DeleteRegion(RegionStore regions) {
-            super("delete_region", "Delete region", "Remove a named region.");
+            super("delete_region", "Delete region", "Remove a region by its note.");
             this.regions = regions;
         }
 
@@ -88,9 +91,9 @@ final class RegionTools {
             return Access.DELETE;
         }
 
-        public Deleted call(Name name) {
-            if (!regions.remove(name.name())) throw new ToolException("No region named '" + name.name() + "'");
-            return new Deleted(name.name());
+        public Deleted call(Note note) {
+            if (!regions.remove(note.note())) throw new ToolException("No region noted '" + note.note() + "'");
+            return new Deleted(note.note());
         }
     }
 
@@ -100,7 +103,7 @@ final class RegionTools {
         private final RegionStore regions;
 
         ListRegions(Game game, RegionStore regions) {
-            super("list_regions", "Regions", "Named regions near the player, or overlapping an area, nearest first.");
+            super("list_regions", "Regions", "Noted regions near the player, or overlapping an area, nearest first.");
             this.game = game;
             this.regions = regions;
         }
