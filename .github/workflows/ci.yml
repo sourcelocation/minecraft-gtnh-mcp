@@ -21,11 +21,11 @@ jobs:
         working-directory: mod
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-java@v6.0.1
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version-file: .java-version
-      - uses: gradle/actions/setup-gradle@v6.4.0
+      - uses: gradle/actions/setup-gradle@v6.4.1
       # Format (spotless), checkstyle, and the shaded, reobfuscated jar.
       - run: ./gradlew build
       - uses: actions/upload-artifact@v7.0.2
